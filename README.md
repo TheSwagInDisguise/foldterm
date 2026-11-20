@@ -1,72 +1,150 @@
-# FoldTerm
+<div align="center">
 
-FoldTerm is a terminal-styled Android home screen built for foldables. It follows the "User Intelligence" mock-ups: a nav rail, a global prompt, a home view with "happening now", agenda and summary, plus Calendar, Mail, Chat, People, Photos, Health and News panes and a dock with now-playing. All text is monospace and the search bar works as a command shell.
+# `❯ foldterm_`
 
-## Foldable behaviour
+**A terminal-flavoured home screen for foldable Android phones.**
+
+Agenda, inbox, people, weather and news in hinge-aware panes, with a command line where the search bar used to be.
+
+[![Build](https://github.com/TheSwagInDisguise/foldterm/actions/workflows/build.yml/badge.svg)](https://github.com/TheSwagInDisguise/foldterm/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/TheSwagInDisguise/foldterm?include_prereleases&sort=semver)](https://github.com/TheSwagInDisguise/foldterm/releases/latest)
+![Android 10+](https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-Compose-7F52FF?logo=kotlin&logoColor=white)
+
+[**Download the latest APK →**](https://github.com/TheSwagInDisguise/foldterm/releases/latest)
+
+</div>
+
+---
+
+## Contents
+
+- [Features](#features)
+- [Built for foldables](#built-for-foldables)
+- [The prompt](#the-prompt)
+- [Install](#install)
+- [Privacy](#privacy)
+- [Building & releasing](#building--releasing)
+
+---
+
+## Features
+
+| Pane | What it shows |
+|---|---|
+| **⌂ Home** | Greeting, a *happening now / up next* card with join and directions buttons, today's agenda, and an on-device summary of steps, weather, inbox, news, tasks and battery |
+| **» Chat / @ Mail** | Live feed from your messaging and mail apps' notifications, with inline reply where the app supports it |
+| **▦ Calendar** | Agenda and month views across all synced calendars, event details, and a task list |
+| **☺ People** | Contacts with *in case of emergency* and favourite groups, quick call/text/email, vCard view |
+| **▣ Photos** | Recent photos grouped by day |
+| **♥ Health** | Step counter with a daily goal, plus an `htop`-style view of battery, storage, memory and hinge posture |
+| **≡ News** | Headlines from any RSS or Atom feeds you choose |
+| **⚙ Settings** | Themes, permissions, default-launcher setup, units, location override, feeds |
+
+The dock at the bottom holds your pinned apps, the app drawer and a **now playing** media control. Long-press any app to pin, unpin, open app info or uninstall.
+
+**Themes:** `phosphor` (green on black), `amber`, `pastel` (light and soft, like the original mock-ups) and `paper` (planner-style). Switch from Settings or with `theme <name>`.
+
+## Built for foldables
+
+The layout follows the hinge reported by Jetpack WindowManager:
+
 | Posture | Layout |
 |---|---|
-| Cover screen / narrow (< 600dp) | Single column, section tabs above the dock |
-| Unfolded flat (book hinge) | Nav rail + two panes. The split lines up with the hinge so nothing sits on the crease |
-| Half-open, vertical hinge (book) | Same as above |
-| Half-open, horizontal hinge (tabletop) | Content above the hinge, live console and dock below it |
+| **Folded / cover screen** | Single column, section tabs above the dock |
+| **Open, flat** | Nav rail and two panes, split exactly at the hinge so nothing sits on the crease |
+| **Half-open, book** | Same as open, with panes on either side of the fold |
+| **Half-open, tabletop** | Content on the top half, a live console and the dock on the bottom half |
 
 ## The prompt
-Tap the prompt, or press `/` on a hardware keyboard. As you type, apps, contacts, sections and commands are matched. Enter runs the top match, Tab completes, and ↑/↓ step through history.
 
+Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you type: apps, contacts, sections and commands.
+<kbd>Enter</kbd> runs the top result, <kbd>Tab</kbd> completes, <kbd>↑</kbd>/<kbd>↓</kbd> walk through history, and <kbd>Esc</kbd> closes the prompt.
+
+```text
+❯ help
+  open <app>                launch an app (or just type its name)
+  cd <section>              home · chat · mail · cal · people · photos · health · news · settings
+  call | sms | email <name> act on a contact
+  cal [days]                print upcoming events
+  todo [add|done n|rm n]    manage tasks
+  weather · news · notifs   quick readouts
+  play | pause | next | prev
+  theme <phosphor|amber|pastel|paper>
+  dock add|rm <app> | reset
+  settings [wifi|bt|display|battery|apps|sound]
+  grant · access · default  permissions · notification access · set as home app
+  uptime · fold · date · clear · reload · version
 ```
-help                      list commands
-open <app>                launch an app (or just type its name)
-cd <section>              home, chat, mail, cal, people, photos, health, news, settings
-call|sms|email <name>     act on a contact
-cal [days]                print upcoming events
-todo [add|done n|rm n]    tasks
-weather · news · notifs   quick readouts
-play|pause|next|prev      media controls
-theme <phosphor|amber|pastel|paper>
-dock add|rm <app>|reset   edit the dock
-grant · access · default  permissions, notification access, set as home app
-settings [wifi|bt|display|battery|apps|sound]
-uptime · fold · date · clear · reload · version
-```
-Anything else is searched on the web.
 
-## Where the data comes from
-Everything is read on the device, and FoldTerm never signs in to your accounts.
+Anything that isn't a command or a match becomes a web search.
 
-- **Calendar / agenda**: Android's CalendarContract (any synced calendar).
-- **People**: the system contacts provider. You set "In case of emergency" contacts inside FoldTerm.
-- **Mail / Chat**: notifications from mail and messaging apps, via notification access. You can reply inline when the app supports it.
-- **Now playing**: active media sessions. This also needs notification access.
-- **Weather**: [Open-Meteo](https://open-meteo.com) (no API key), using coarse location or a lat,lon override.
-- **News**: any RSS/Atom feeds, set in Settings.
-- **Health**: the hardware step counter plus device vitals (battery, storage, memory).
-- **Photos**: MediaStore.
-- **Tasks**: stored locally.
+## Install
 
-## Builds and releases (GitHub Actions only)
-`.github/workflows/build.yml` runs on every push and PR. It builds `assembleRelease` and uploads the APK as a workflow artifact. Pushing a tag such as `v0.2.0` also publishes a GitHub Release with the signed APK attached. A tag build fails if no signing key is configured.
+1. Download `foldterm-x.y.z.apk` from **[Releases](https://github.com/TheSwagInDisguise/foldterm/releases/latest)** and open it on your phone. You may need to allow installs from your browser.
+2. Launch **FoldTerm** and accept the permission prompts. You can run `grant` later to ask again.
+3. **Settings → home app → set default** makes FoldTerm your home screen.
+4. **Settings → notifs → grant** turns on the Mail, Chat and now-playing panes.
 
-### Signing secrets
-Add these under **Settings → Secrets and variables → Actions**:
+Requires Android 10 (API 29) or newer. Every permission is optional; a pane without its permission shows a one-tap fix.
+
+## Privacy
+
+FoldTerm has no account, no analytics and no backend.
+
+- Calendar, contacts, photos and steps are read from Android's own providers and stay on the device.
+- Mail and chat come from notifications that are already on your phone. FoldTerm never signs in to your accounts.
+- Network requests go only to [Open-Meteo](https://open-meteo.com) for weather (approximate coordinates, no key) and to the news feeds you configure.
+
+## Building & releasing
+
+Everything is built by GitHub Actions ([`build.yml`](.github/workflows/build.yml)):
+
+- **Every push and pull request** builds a release APK and attaches it to the workflow run as an artifact.
+- **Pushing a tag** such as `v0.2.0` builds, signs and publishes a GitHub Release with the APK. Tag builds refuse to publish an unsigned APK.
+
+### Signing key
+
+Add these repository secrets under **Settings → Secrets and variables → Actions**:
 
 | Secret | Value |
 |---|---|
-| `KEYSTORE_BASE64` | your `.jks` keystore, base64-encoded |
-| `KEYSTORE_PASSWORD` | keystore password |
-| `KEY_ALIAS` | key alias |
-| `KEY_PASSWORD` | key password |
+| `KEYSTORE_BASE64` | The release keystore (`.jks`), base64-encoded |
+| `KEYSTORE_PASSWORD` | Keystore password |
+| `KEY_ALIAS` | Key alias |
+| `KEY_PASSWORD` | Key password |
 
-If you don't have a keystore yet, create one once and keep it safe. Every future update must be signed with the same key.
+To create a keystore once (keep it backed up, because every future update must be signed with the same key):
+
 ```bash
 keytool -genkeypair -v -keystore foldterm.jks -keyalg RSA -keysize 4096 -validity 10000 -alias foldterm
-base64 -w0 foldterm.jks   # paste the output into KEYSTORE_BASE64 (macOS: base64 -i foldterm.jks)
 ```
-Keystores are git-ignored, and nothing secret is stored in the repo.
 
-## First run
-1. Install the APK from the latest Release.
-2. Open FoldTerm and accept the permission prompts (`grant` re-requests them).
-3. Settings → **set default** to make it your home app.
-4. Settings → notification access **grant** to enable the Mail, Chat and now-playing panes.
+```bash
+base64 -w0 foldterm.jks
+```
 
-Requires Android 10 (API 29) or newer.
+On macOS use `base64 -i foldterm.jks`. Paste the output into `KEYSTORE_BASE64`.
+
+### Cutting a release
+
+```bash
+git tag v0.2.0
+```
+
+```bash
+git push origin v0.2.0
+```
+
+### Project layout
+
+```text
+app/src/main/java/dev/foldterm/launcher/
+├── MainActivity.kt         window/fold tracking, permission + home-role requests
+├── LauncherViewModel.kt    state and actions
+├── shell/Shell.kt          command interpreter and fuzzy suggestions
+├── data/                   calendar, contacts, apps, notifications, weather/news, device
+└── ui/                     theme, components, root layout, screens/
+```
+
+Stack: Kotlin · Jetpack Compose · Material 3 · AndroidX WindowManager · coroutines. No third-party SDKs.
