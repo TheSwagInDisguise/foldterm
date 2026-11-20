@@ -44,6 +44,8 @@ Captured on a Pixel Fold emulator with FoldTerm's built-in demo data (see [`scri
 | <img src="docs/screenshots/media.png" alt="Media"> **Media** | <img src="docs/screenshots/weather.png" alt="Weather"> **Weather** |
 | <img src="docs/screenshots/home-pastel.png" alt="Home, pastel theme"> **Home · pastel** | <img src="docs/screenshots/drawer.png" alt="App drawer"> **App drawer** |
 | <img src="docs/screenshots/prompt.png" alt="The prompt"> **The prompt** | <img src="docs/screenshots/notes.png" alt="Notes, amber theme"> **Notes · amber** |
+| <img src="docs/screenshots/money.png" alt="Money"> **Money** | <img src="docs/screenshots/habits.png" alt="Habits"> **Habits** |
+| <img src="docs/screenshots/radio.png" alt="Radio, amber theme"> **Radio · amber** | <img src="docs/screenshots/screen-time.png" alt="Screen time"> **Screen time** |
 
 **Cover screen**
 
