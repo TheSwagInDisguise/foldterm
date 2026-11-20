@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.foldterm.launcher.BuildConfig
 import dev.foldterm.launcher.LauncherViewModel
+import dev.foldterm.launcher.Section
+import dev.foldterm.launcher.orderedSections
 import dev.foldterm.launcher.data.ContactSummary
 import dev.foldterm.launcher.data.NotifKind
 import dev.foldterm.launcher.ui.AsyncBitmap
@@ -529,6 +531,8 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     var customTint by remember(iconTint) { mutableStateOf(if (iconTint.startsWith("#")) iconTint else "") }
     val hiddenKeys by vm.prefs.hidden.collectAsStateWithLifecycle()
+    val sectionOrder by vm.prefs.sectionOrder.collectAsStateWithLifecycle()
+    val hiddenSections by vm.prefs.hiddenSections.collectAsStateWithLifecycle()
     val allApps by vm.allApps.collectAsStateWithLifecycle()
     val hiddenApps = remember(hiddenKeys, allApps) { allApps.filter { it.key in hiddenKeys } }
     var feeds by remember(feedsPref) { mutableStateOf(feedsPref) }
@@ -605,6 +609,42 @@ fun SettingsScreen(vm: LauncherViewModel) {
                                 vm.prefs.setWallpaperDim(levels[it])
                             })
                         }
+                    }
+                    Divider()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("sidebar", weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        T("reset", color = t.dim, size = 12.sp, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { vm.prefs.resetSidebar() }.padding(6.dp))
+                    }
+                    T("choose which sections appear, and their order", color = t.dim, size = 12.sp)
+                    Spacer(Modifier.height(6.dp))
+                    val ordered = orderedSections(sectionOrder)
+                    ordered.forEachIndexed { i, sec ->
+                        val locked = sec == Section.HOME
+                        val on = locked || sec.id !in hiddenSections
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                .background(if (on) t.panelAlt else Color.Transparent)
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            T(sec.glyph, color = if (on) t.accent else t.dim, size = 18.sp, modifier = Modifier.width(30.dp))
+                            T(sec.title.lowercase(), color = if (on) t.fg else t.dim, modifier = Modifier.weight(1f))
+                            T("↑", color = if (i > 0) t.fg else t.dim.copy(alpha = 0.3f), size = 16.sp,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = i > 0) { vm.moveSection(sec, -1) }.padding(horizontal = 10.dp, vertical = 6.dp))
+                            T("↓", color = if (i < ordered.lastIndex) t.fg else t.dim.copy(alpha = 0.3f), size = 16.sp,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = i < ordered.lastIndex) { vm.moveSection(sec, 1) }.padding(horizontal = 10.dp, vertical = 6.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Box(
+                                Modifier.width(64.dp).clip(RoundedCornerShape(50))
+                                    .background(if (on) t.button else t.chip)
+                                    .clickable(enabled = !locked) { vm.prefs.setSectionVisible(sec.id, !on) }
+                                    .padding(vertical = 5.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                T(if (locked) "always" else if (on) "on" else "off", color = if (on) t.onButton else t.dim, size = 12.sp, weight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
                     }
                     if (hiddenApps.isNotEmpty()) {
                         Divider()

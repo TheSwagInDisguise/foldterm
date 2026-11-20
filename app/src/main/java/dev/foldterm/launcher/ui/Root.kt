@@ -96,6 +96,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.foldterm.launcher.LauncherViewModel
 import dev.foldterm.launcher.Section
+import dev.foldterm.launcher.sidebarSections
 import dev.foldterm.launcher.data.AppEntry
 import dev.foldterm.launcher.data.NowPlayingStore
 import dev.foldterm.launcher.data.Posture
@@ -183,7 +184,8 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
                     e.key == Key.Slash && !vm.shellOpen.value -> { vm.shellOpen.value = true; runCatching { promptFocus.requestFocus() }; true }
                     e.key == Key.Escape -> { vm.onBack(); true }
                     e.isAltPressed && e.key in sectionKeys -> {
-                        Section.entries.getOrNull(sectionKeys.indexOf(e.key))?.let { vm.go(it) }; true
+                        sidebarSections(vm.prefs.sectionOrder.value, vm.prefs.hiddenSections.value)
+                            .getOrNull(sectionKeys.indexOf(e.key))?.let { vm.go(it) }; true
                     }
                     else -> false
                 }
@@ -553,12 +555,15 @@ private fun ConsoleView(vm: LauncherViewModel, modifier: Modifier, showHint: Boo
 
 @Composable
 private fun NavRail(vm: LauncherViewModel, current: Section) {
+    val order by vm.prefs.sectionOrder.collectAsStateWithLifecycle()
+    val hiddenSections by vm.prefs.hiddenSections.collectAsStateWithLifecycle()
+    val sidebar = remember(order, hiddenSections) { sidebarSections(order, hiddenSections) }
     val t = LocalTerm.current
     Column(
         Modifier.width(92.dp).fillMaxHeight().padding(end = 12.dp).verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Section.entries.filter { it != Section.SETTINGS }.forEach { s -> RailItem(s, s == current) { vm.go(s) } }
+        sidebar.forEach { s -> RailItem(s, s == current) { vm.go(s) } }
         Spacer(Modifier.height(24.dp))
         RailItem(Section.SETTINGS, current == Section.SETTINGS) { vm.go(Section.SETTINGS) }
     }
@@ -582,9 +587,12 @@ private fun RailItem(s: Section, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun CompactTabs(vm: LauncherViewModel, current: Section) {
+    val order by vm.prefs.sectionOrder.collectAsStateWithLifecycle()
+    val hiddenSections by vm.prefs.hiddenSections.collectAsStateWithLifecycle()
+    val sidebar = remember(order, hiddenSections) { sidebarSections(order, hiddenSections) }
     val t = LocalTerm.current
     LazyRow(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        items(Section.entries.toList()) { s ->
+        items(sidebar + Section.SETTINGS) { s ->
             val sel = s == current
             Box(
                 Modifier.clip(RoundedCornerShape(50)).background(if (sel) t.panel else t.chip)

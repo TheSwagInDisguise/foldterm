@@ -325,6 +325,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (s == Section.HEALTH) vitals.value = deviceRepo.vitals()
     }
 
+    fun moveSection(s: Section, dir: Int) {
+        val list = orderedSections(prefs.sectionOrder.value).toMutableList()
+        val i = list.indexOf(s)
+        val j = i + dir
+        if (i < 0 || j !in list.indices) return
+        list[i] = list[j].also { list[j] = list[i] }
+        prefs.setSectionOrder(list.map { it.id })
+    }
+
     fun onHomePressed() {
         if (shellOpen.value || drawerOpen.value) {
             shellOpen.value = false; drawerOpen.value = false; input.value = ""

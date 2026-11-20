@@ -53,6 +53,8 @@ The dock at the bottom holds your pinned apps, the app drawer and a **now playin
 
 **Look:** pick colour or **mono** icons (tinted to the theme, like an old phosphor screen), and use the theme's background or your own wallpaper.
 
+**Sidebar:** in **Settings → sidebar**, switch sections on or off and reorder them. The cover-screen tabs and <kbd>Alt</kbd>+number shortcuts follow the same order. Home and Settings are always there, and hidden sections still open with `cd <section>`.
+
 **Themes:** `phosphor` (green on black), `amber`, `pastel` (light and soft, like the original mock-ups) and `paper` (planner-style). Switch from Settings or with `theme <name>`.
 
 ## Built for foldables

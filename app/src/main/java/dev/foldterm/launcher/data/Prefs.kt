@@ -28,6 +28,24 @@ class Prefs(context: Context) {
     val notes = MutableStateFlow(loadNotes())
     val aliases = MutableStateFlow(loadAliases())
     val widgets = MutableStateFlow(loadWidgets())
+    val sectionOrder = MutableStateFlow(sp.getString("sectionOrder", "")!!.split('|').filter { it.isNotBlank() })
+    val hiddenSections = MutableStateFlow(sp.getStringSet("hiddenSections", emptySet())!!.toSet())
+
+    fun setSectionOrder(ids: List<String>) {
+        sectionOrder.value = ids
+        sp.edit().putString("sectionOrder", ids.joinToString("|")).apply()
+    }
+    fun setSectionVisible(id: String, visible: Boolean) {
+        val next = hiddenSections.value.toMutableSet().apply { if (visible) remove(id) else add(id) }
+        hiddenSections.value = next
+        sp.edit().putStringSet("hiddenSections", next).apply()
+    }
+    fun resetSidebar() {
+        setSectionOrder(emptyList())
+        hiddenSections.value = emptySet()
+        sp.edit().remove("hiddenSections").apply()
+    }
+
     /** Saved app pairs: name → (left app key, right app key). */
     val pairs = MutableStateFlow(loadPairs())
     val recent = MutableStateFlow(sp.getString("recent", "")!!.split('|').filter { it.isNotBlank() })
