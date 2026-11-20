@@ -46,6 +46,8 @@ Captured on a Pixel Fold emulator with FoldTerm's built-in demo data (see [`scri
 | <img src="docs/screenshots/prompt.png" alt="The prompt"> **The prompt** | <img src="docs/screenshots/notes.png" alt="Notes, amber theme"> **Notes · amber** |
 | <img src="docs/screenshots/money.png" alt="Money"> **Money** | <img src="docs/screenshots/habits.png" alt="Habits"> **Habits** |
 | <img src="docs/screenshots/radio.png" alt="Radio, amber theme"> **Radio · amber** | <img src="docs/screenshots/screen-time.png" alt="Screen time"> **Screen time** |
+| <img src="docs/screenshots/podcasts.png" alt="Podcasts"> **Podcasts** | <img src="docs/screenshots/links.png" alt="Read later, pastel theme"> **Read later · pastel** |
+| <img src="docs/screenshots/games.png" alt="Games"> **Games** | <img src="docs/screenshots/settings.png" alt="Settings"> **Settings** |
 
 **Cover screen**
 
@@ -83,6 +85,15 @@ Captured on a Pixel Fold emulator with FoldTerm's built-in demo data (see [`scri
 | **≡ News** | RSS/Atom headlines by source, unread dots, hide read, mark all read, and a **saved** list |
 | **✎ Notes** | Autosaving scratchpad with search, copy, share, a note pinned to Home, and a preview that renders headings, bullets and tappable `- [ ]` checklists |
 | **◫ Widgets** | Host real Android widgets in one or two columns with reorder and resize; they can also go on Home and the cover screen |
+| **≋ Radio** | Internet radio (SomaFM presets plus any stream), controllable from the dock and lock screen |
+| **◖ Podcasts** | Subscribe to podcast feeds and play episodes |
+| **☑ Habits** | Daily check-ins with a 7-day grid, streaks and a 30-day rate |
+| **$ Money** | Log spending in one line, monthly budget and pace, categories, 14-day chart |
+| **↗ Links** | Read-later list; anything shared to FoldTerm from another app lands here (text becomes a note) |
+| **● Memos** | Voice memos: record, play, share, delete |
+| **◆ Games** | Original terminal games: serpent, mines and a typing sprint |
+| **⌖ Tools** | Compass, bubble level, dice, coin flip and tally counter |
+| **⋯ Hub** | Every section as a tile, so you can keep the sidebar short |
 | **⚙ Settings** | Themes, icons, text size, wallpaper, sidebar, home and cover layouts, gestures, permissions, search engine, morning brief, backup & restore |
 
 ## Home, dock & drawer
@@ -92,6 +103,8 @@ Captured on a Pixel Fold emulator with FoldTerm's built-in demo data (see [`scri
 - **Gestures:** swipe up, swipe down and double-tap on empty space each run an action you choose: drawer, notification shade, prompt, alerts, media, **lock screen**, torch or nothing. On a keyboard: <kbd>/</kbd> opens the prompt, <kbd>Esc</kbd> closes it, <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> jumps between sections.
 - **Split screen & pop-ups:** `split <left> | <right>`, saved pairs (`pair save work chrome | slack`, then `pair work` or just `work`), and `float <app>` for a floating window where the device supports it. Split screen needs the unfolded inner screen.
 - **Screen saver:** *FoldTerm clock*, a large clock over falling terminal glyphs in your theme, while charging or docked.
+- **Share to FoldTerm:** share a link from any app to save it for later, or text to make a note.
+- **Extra cards:** habits, countdowns, read later, stopwatch, world clocks, most used apps and quick actions for Home and the cover screen.
 - **Crash log:** if FoldTerm ever crashes, the next launch says so and `crashlog` shows (and copies) the details. After each update the console lists what's new.
 
 ## Built for foldables
@@ -140,6 +153,9 @@ Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you t
   theme <phosphor|amber|pastel|paper|custom> · dock add|rm <app> · hide | unhide <app>
   settings [wifi|bt|display|battery|apps|sound] · screensaver · grant · access · default
   maps <place> · yt <query> · g <query> · copy <text> · crashlog · reload · version
+  spent 12.50 lunch · habit add|done <name> · countdown add trip dec 20 · save <url>
+  radio [station|stop] · podcast add <feed> · memo · roll 2d6 · flip
+  define <word> · wiki <topic> · translate es <text> · price btc
 ```
 
 The prompt searches everything: apps, app shortcuts, contacts, upcoming events, notes, messages, saved pairs and settings (FoldTerm's and Android's). Maths (with `ans`), plain-English percentages, unit conversions, currency and world times are answered as you type. Typing a web address (`github.com`) opens it. With the prompt empty it shows recent apps and commands; <kbd>↑</kbd>/<kbd>↓</kbd> pick a suggestion while typing. Tap 🎤 to speak a command. Anything else becomes a web search.
@@ -172,7 +188,8 @@ FoldTerm has no account, no analytics and no backend.
 - Calendar, contacts, photos and steps are read from Android's own providers and stay on the device.
 - Mail and chat come from notifications that are already on your phone. FoldTerm never signs in to your accounts.
 - Screen time, steps and notifications are read from Android on the device and never leave it.
-- Network requests go only to [Open-Meteo](https://open-meteo.com) for weather and place search (approximate coordinates, no key), [open.er-api.com](https://www.exchangerate-api.com/docs/free) for currency rates (only when you convert currency), and the news feeds you configure.
+- Network requests go only to services you use, none with an account or key: [Open-Meteo](https://open-meteo.com) for weather and place search (approximate coordinates), open.er-api.com for currency, dictionaryapi.dev for `define`, Wikipedia for `wiki`, MyMemory for `translate`, CoinGecko for `price`, and the radio streams, podcast feeds and news feeds you choose.
+- Voice memos and everything you log (notes, tasks, habits, spending, links) are stored only on the phone; back them up with Settings → backup.
 - Optional permissions are explained where they're used: usage access (screen time), modify system settings (brightness/rotation/timeout), Do Not Disturb access, and a device-admin permission limited to locking the screen.
 
 ## Building & releasing
