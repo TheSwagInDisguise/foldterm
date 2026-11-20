@@ -46,6 +46,10 @@ class Prefs(context: Context) {
         sp.edit().remove("hiddenSections").apply()
     }
 
+    /** App drawer order: "az", "used" or "new". */
+    val drawerSort = MutableStateFlow(sp.getString("drawerSort", "az") ?: "az")
+    fun setDrawerSort(v: String) { drawerSort.value = v; sp.edit().putString("drawerSort", v).apply() }
+
     /** Cover-screen Home: on = compact card layout when the window is narrow. */
     val coverMode = MutableStateFlow(sp.getBoolean("coverMode", true))
     /** Enabled cover cards in order. */

@@ -14,6 +14,9 @@ data class AppEntry(
     val className: String,
     val user: UserHandle,
     val isWork: Boolean,
+    /** ApplicationInfo.category (CATEGORY_GAME, …) or -1. */
+    val category: Int = -1,
+    val installedAt: Long = 0L,
 ) {
     val key: String get() = "$packageName/$className"
     val component: ComponentName get() = ComponentName(packageName, className)

@@ -11,6 +11,9 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -729,9 +732,21 @@ private fun AppDrawer(vm: LauncherViewModel) {
     val splitPick by vm.splitPick.collectAsStateWithLifecycle()
     val pairs by vm.prefs.pairs.collectAsStateWithLifecycle()
     var filter by remember { mutableStateOf("") }
-    val shown = remember(apps, filter) {
-        if (filter.isBlank()) apps else apps.filter { it.label.contains(filter, true) || it.packageName.contains(filter, true) }
+    val sort by vm.prefs.drawerSort.collectAsStateWithLifecycle()
+    val usage by vm.prefs.usage.collectAsStateWithLifecycle()
+    var category by remember { mutableStateOf<Int?>(null) }
+    val shown = remember(apps, filter, sort, category, usage) {
+        val f = apps.filter { filter.isBlank() || it.label.contains(filter, true) || it.packageName.contains(filter, true) }
+            .filter { category == null || it.category == category }
+        when (sort) {
+            "used" -> f.sortedByDescending { usage[it.key] ?: 0 }
+            "new" -> f.sortedByDescending { it.installedAt }
+            else -> f
+        }
     }
+    val categories = remember(apps) { apps.map { it.category }.filter { it in CATEGORY_NAMES }.distinct().sortedBy { CATEGORY_NAMES[it] } }
+    val gridState = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
     Box(
         Modifier.fillMaxSize().background(t.bg.copy(alpha = 0.7f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
@@ -778,10 +793,21 @@ private fun AppDrawer(vm: LauncherViewModel) {
             Field(filter, { filter = it }, if (pick != null) "filter apps to pair with ${pick.label}…" else "filter apps…", Modifier.fillMaxWidth(), onDone = {
                 shown.firstOrNull()?.let { if (pick != null && pick.uniqueKey != it.uniqueKey) vm.split(pick, it) else vm.launch(it) }
             })
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                items(listOf("az" to "a–z", "used" to "most used", "new" to "newest")) { (id, label) ->
+                    DrawerChip(label, sort == id) { vm.prefs.setDrawerSort(id) }
+                }
+                item { T("│", color = t.border, modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)) }
+                item { DrawerChip("all", category == null) { category = null } }
+                items(categories) { c -> DrawerChip(CATEGORY_NAMES[c] ?: "?", category == c) { category = if (category == c) null else c } }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxSize()) {
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Adaptive(100.dp),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -820,6 +846,45 @@ private fun AppDrawer(vm: LauncherViewModel) {
                     }
                 }
             }
+            // A–Z jump strip
+            if (sort == "az" && filter.isBlank() && category == null && shown.size > 30) {
+                val letters = remember(shown) {
+                    shown.mapIndexedNotNull { i, a -> a.label.firstOrNull()?.uppercaseChar()?.let { c -> (if (c.isLetter()) c else '#') to i } }
+                        .distinctBy { it.first }
+                }
+                Column(
+                    Modifier.fillMaxHeight().padding(start = 4.dp).verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    letters.forEach { (c, idx) ->
+                        T(c.toString(), color = t.dim, size = 11.sp, weight = FontWeight.Bold,
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { scope.launch { gridState.scrollToItem(idx) } }
+                                .padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                }
+            }
+            }
         }
     }
+}
+
+private val CATEGORY_NAMES = mapOf(
+    android.content.pm.ApplicationInfo.CATEGORY_GAME to "games",
+    android.content.pm.ApplicationInfo.CATEGORY_AUDIO to "audio",
+    android.content.pm.ApplicationInfo.CATEGORY_VIDEO to "video",
+    android.content.pm.ApplicationInfo.CATEGORY_IMAGE to "photo",
+    android.content.pm.ApplicationInfo.CATEGORY_SOCIAL to "social",
+    android.content.pm.ApplicationInfo.CATEGORY_NEWS to "news",
+    android.content.pm.ApplicationInfo.CATEGORY_MAPS to "maps",
+    android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY to "work",
+    android.content.pm.ApplicationInfo.CATEGORY_ACCESSIBILITY to "access",
+)
+
+@Composable
+private fun DrawerChip(label: String, on: Boolean, onClick: () -> Unit) {
+    val t = LocalTerm.current
+    Box(
+        Modifier.clip(RoundedCornerShape(50)).background(if (on) t.button else t.chip).clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) { T(label, color = if (on) t.onButton else t.dim, size = 12.sp, weight = FontWeight.SemiBold) }
 }

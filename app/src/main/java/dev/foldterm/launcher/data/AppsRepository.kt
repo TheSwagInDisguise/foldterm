@@ -22,14 +22,21 @@ class AppsRepository(private val ctx: Context) {
 
     fun load(): List<AppEntry> {
         val me = Process.myUserHandle()
+        val pm = ctx.packageManager
         return userManager.userProfiles.flatMap { user ->
             runCatching { launcherApps.getActivityList(null, user) }.getOrDefault(emptyList()).map {
+                val pkg = it.componentName.packageName
                 AppEntry(
-                    label = it.label?.toString() ?: it.componentName.packageName,
-                    packageName = it.componentName.packageName,
+                    label = it.label?.toString() ?: pkg,
+                    packageName = pkg,
                     className = it.componentName.className,
                     user = user,
                     isWork = user != me,
+                    category = runCatching { it.applicationInfo.category }.getOrDefault(-1),
+                    installedAt = runCatching {
+                        @Suppress("DEPRECATION")
+                        pm.getPackageInfo(pkg, 0).firstInstallTime
+                    }.getOrDefault(0L),
                 )
             }
         }.filter { it.packageName != ctx.packageName }
