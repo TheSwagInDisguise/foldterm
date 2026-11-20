@@ -101,7 +101,7 @@ FoldTerm has no account, no analytics and no backend.
 Everything is built by GitHub Actions ([`build.yml`](.github/workflows/build.yml)):
 
 - **Every push and pull request** builds a release APK and attaches it to the workflow run as an artifact.
-- **Pushing a tag** such as `v0.2.0` builds, signs and publishes a GitHub Release with the APK. Tag builds refuse to publish an unsigned APK.
+- **New version on `main`**: when [`version.txt`](version.txt) holds a version with no release yet, CI builds, signs, tags `vX.Y.Z` and publishes a GitHub Release with the APK. Pushing a `v*` tag does the same. CI never publishes an unsigned APK.
 
 ### Signing key
 
@@ -128,12 +128,14 @@ On macOS use `base64 -i foldterm.jks`. Paste the output into `KEYSTORE_BASE64`.
 
 ### Cutting a release
 
+Bump the version and push to `main`:
+
 ```bash
-git tag v0.2.0
+echo "0.2.0" > version.txt
 ```
 
 ```bash
-git push origin v0.2.0
+git commit -am "Release 0.2.0" && git push
 ```
 
 ### Project layout
