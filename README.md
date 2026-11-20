@@ -100,7 +100,8 @@ Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you t
   open <app>                launch an app (or just type its name)
   cd <section>              home · chat · mail · notifs · cal · people · photos · media · controls · usage
                             · focus · health · weather · news · notes · widgets · settings
-  call | sms | email | wa <name> [msg]   act on a contact
+  call | sms | email | wa <name> [msg]   act on a contact; sms/wa pre-fill the message
+  contact add <name> <number>             create a contact
   cal [days] · event [day] [time] <title>   e.g. event fri 3pm dentist
   todo [add|done n|rm n]    tasks; "todo add pay rent fri !" sets a due day and a star
   = <expr> · conv 5 km in mi · 100 usd in aud · time tokyo   (or just type them)
