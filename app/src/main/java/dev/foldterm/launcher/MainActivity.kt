@@ -2,10 +2,8 @@ package dev.foldterm.launcher
 
 import android.app.role.RoleManager
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
+import android.graphics.PixelFormat
 import android.os.Bundle
-import android.view.WindowManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,6 +28,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A translucent surface lets the wallpaper (theme: windowShowWallpaper) stay visible;
+        // the UI paints its own opaque background when wallpaper mode is off.
+        window.setFormat(PixelFormat.TRANSLUCENT)
         enableEdgeToEdge()
 
         lifecycleScope.launch {
@@ -49,19 +50,6 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent { LauncherRoot(vm) }
-
-        // Optional: let the system wallpaper show through the translucent theme.
-        lifecycleScope.launch {
-            vm.prefs.showWallpaper.collect { show ->
-                if (show) {
-                    window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-                    window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-                } else {
-                    window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-                    window.setBackgroundDrawableResource(R.color.term_bg)
-                }
-            }
-        }
 
         if (vm.prefs.consumeFirstRun()) {
             vm.out("first run: requesting permissions — `grant` to retry, `access` for notifications", dev.foldterm.launcher.shell.LineKind.DIM)

@@ -60,6 +60,17 @@ import kotlin.math.abs
 
 val LocalFold = staticCompositionLocalOf { FoldState() }
 
+/** Tint for mono icons; null means "use the theme accent". */
+val LocalIconTint = staticCompositionLocalOf<Color?> { null }
+
+/** Parses "#RRGGBB" / "RRGGBB" (or with alpha). Returns null when invalid. */
+fun parseHexColor(s: String): Color? {
+    val h = s.trim().removePrefix("#")
+    if (h.length != 6 && h.length != 8) return null
+    val v = h.toLongOrNull(16) ?: return null
+    return Color(if (h.length == 6) (0xFF000000 or v) else v)
+}
+
 @Composable
 fun T(
     text: String,
@@ -203,7 +214,8 @@ fun monoFilter(tint: Color): ColorFilter {
 @Composable
 fun AppIcon(app: dev.foldterm.launcher.data.AppEntry, size: Dp, style: String, loader: suspend () -> Bitmap?) {
     val t = LocalTerm.current
-    val filter = remember(style, t) { if (style == "mono") monoFilter(t.accent) else null }
+    val tint = LocalIconTint.current ?: t.accent
+    val filter = remember(style, tint) { if (style == "mono") monoFilter(tint) else null }
     AsyncBitmap(app.uniqueKey, Modifier.size(size), filter, loader)
 }
 

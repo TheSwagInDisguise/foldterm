@@ -20,6 +20,10 @@ class Prefs(context: Context) {
     val hidden = MutableStateFlow(sp.getStringSet("hidden", emptySet())!!.toSet())
     val iconStyle = MutableStateFlow(sp.getString("iconStyle", "color") ?: "color")
     val showWallpaper = MutableStateFlow(sp.getBoolean("wallpaper", false))
+    /** How much the theme background covers the wallpaper, 0 (clear) to 1 (opaque). */
+    val wallpaperDim = MutableStateFlow(sp.getFloat("wallpaperDim", 0.5f))
+    /** "theme" follows the theme accent; otherwise a #RRGGBB colour. */
+    val iconTint = MutableStateFlow(sp.getString("iconTint", "theme") ?: "theme")
     val usage = MutableStateFlow(loadUsage())
     val recent = MutableStateFlow(sp.getString("recent", "")!!.split('|').filter { it.isNotBlank() })
 
@@ -45,6 +49,8 @@ class Prefs(context: Context) {
     }
     fun setIconStyle(v: String) { iconStyle.value = v; sp.edit().putString("iconStyle", v).apply() }
     fun setShowWallpaper(v: Boolean) { showWallpaper.value = v; sp.edit().putBoolean("wallpaper", v).apply() }
+    fun setWallpaperDim(v: Float) { wallpaperDim.value = v; sp.edit().putFloat("wallpaperDim", v).apply() }
+    fun setIconTint(v: String) { iconTint.value = v; sp.edit().putString("iconTint", v).apply() }
 
     /** Counts launches per app and keeps a most-recent-first list. */
     fun recordLaunch(key: String) {

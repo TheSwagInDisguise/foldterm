@@ -63,6 +63,13 @@ import dev.foldterm.launcher.ui.Tabs
 import dev.foldterm.launcher.ui.Themes
 import dev.foldterm.launcher.ui.TwoPane
 import dev.foldterm.launcher.ui.nameColor
+import dev.foldterm.launcher.ui.parseHexColor
+
+/** Classic terminal phosphors and a few extras for mono icons. */
+private val ICON_TINTS = listOf(
+    "#7EE787", "#33FF66", "#FFB000", "#79C0FF", "#00E5FF",
+    "#D2A8FF", "#F778BA", "#FF7B72", "#E6EDF3", "#8B949E",
+)
 
 @Composable
 private fun Adaptive(left: @Composable (Modifier) -> Unit, right: @Composable (Modifier) -> Unit, leftFraction: Float = 0.42f) {
@@ -518,6 +525,9 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val locPref by vm.prefs.manualLocation.collectAsStateWithLifecycle()
     val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
     val wallpaper by vm.prefs.showWallpaper.collectAsStateWithLifecycle()
+    val dim by vm.prefs.wallpaperDim.collectAsStateWithLifecycle()
+    val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
+    var customTint by remember(iconTint) { mutableStateOf(if (iconTint.startsWith("#")) iconTint else "") }
     val hiddenKeys by vm.prefs.hidden.collectAsStateWithLifecycle()
     val allApps by vm.allApps.collectAsStateWithLifecycle()
     val hiddenApps = remember(hiddenKeys, allApps) { allApps.filter { it.key in hiddenKeys } }
@@ -553,9 +563,48 @@ fun SettingsScreen(vm: LauncherViewModel) {
                         Tabs(listOf("color", "mono"), if (iconStyle == "mono") 1 else 0, { vm.prefs.setIconStyle(if (it == 1) "mono" else "color") })
                     }
                     Spacer(Modifier.height(8.dp))
+                    if (iconStyle == "mono") {
+                        Spacer(Modifier.height(8.dp))
+                        T("icon tint", color = t.dim, size = 12.sp)
+                        Spacer(Modifier.height(6.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val swatches = listOf("theme") + ICON_TINTS
+                            swatches.forEach { hex ->
+                                val c = if (hex == "theme") t.accent else parseHexColor(hex)!!
+                                val sel = iconTint.equals(hex, ignoreCase = true)
+                                Box(
+                                    Modifier.size(34.dp).clip(CircleShape).background(c)
+                                        .border(if (sel) 3.dp else 1.dp, if (sel) t.fg else t.border, CircleShape)
+                                        .clickable { vm.prefs.setIconTint(hex) },
+                                    contentAlignment = Alignment.Center,
+                                ) { if (hex == "theme") T("T", color = t.onButton, size = 12.sp, weight = FontWeight.Bold) }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Field(customTint, { customTint = it }, "custom #RRGGBB", Modifier.weight(1f), onDone = {
+                                if (parseHexColor(customTint) != null) vm.prefs.setIconTint("#" + customTint.trim().removePrefix("#"))
+                            })
+                            Spacer(Modifier.width(8.dp))
+                            TButton("apply", enabled = parseHexColor(customTint) != null) {
+                                vm.prefs.setIconTint("#" + customTint.trim().removePrefix("#"))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         T("background", modifier = Modifier.width(110.dp))
                         Tabs(listOf("theme", "wallpaper"), if (wallpaper) 1 else 0, { vm.prefs.setShowWallpaper(it == 1) })
+                    }
+                    if (wallpaper) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            T("dim", modifier = Modifier.width(110.dp))
+                            val levels = listOf(0f, 0.3f, 0.5f, 0.7f)
+                            Tabs(listOf("none", "light", "medium", "heavy"), levels.indexOfFirst { kotlin.math.abs(it - dim) < 0.05f }.coerceAtLeast(0), {
+                                vm.prefs.setWallpaperDim(levels[it])
+                            })
+                        }
                     }
                     if (hiddenApps.isNotEmpty()) {
                         Divider()

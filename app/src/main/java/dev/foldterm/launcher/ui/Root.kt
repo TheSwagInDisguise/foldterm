@@ -114,9 +114,10 @@ import dev.foldterm.launcher.data.NotifKind
 fun LauncherRoot(vm: LauncherViewModel) {
     val themeName by vm.prefs.theme.collectAsStateWithLifecycle()
     val fold by vm.fold.collectAsStateWithLifecycle()
+    val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     val colors = Themes.byName(themeName)
     TermTheme(colors) {
-        CompositionLocalProvider(LocalFold provides fold) {
+        CompositionLocalProvider(LocalFold provides fold, LocalIconTint provides parseHexColor(iconTint)) {
             LauncherScaffold(vm)
         }
     }
@@ -143,10 +144,12 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
     }
 
     val wallpaper by vm.prefs.showWallpaper.collectAsStateWithLifecycle()
+    val dim by vm.prefs.wallpaperDim.collectAsStateWithLifecycle()
     Box(
         Modifier
             .fillMaxSize()
-            .background(if (wallpaper) t.bg.copy(alpha = if (t.dark) 0.55f else 0.35f) else t.bg)
+            // the window always shows the wallpaper; without it we paint the theme background opaquely
+            .background(if (wallpaper) t.bg.copy(alpha = dim) else t.bg)
             .pointerInput(Unit) {
                 // swipe up: app drawer · swipe down: notification shade (or close the drawer)
                 var total = 0f
