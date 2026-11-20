@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.46.0" to listOf("`email maya lunch friday?` pre-fills the subject"),
     "0.45.0" to listOf("percentages in plain English: 18% of 240 · 15% off 80 · 64.50 + 15% · what % is 30 of 120"),
     "0.44.0" to listOf("`sms maya running late` pre-fills the message", "`contact add Sam 0400 123 456` creates a contact"),
     "0.43.0" to listOf("the big clock card shows your next event", "long-press the dock's drawer button to open the prompt"),

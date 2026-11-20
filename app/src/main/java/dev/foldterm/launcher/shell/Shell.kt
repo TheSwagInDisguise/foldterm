@@ -412,9 +412,14 @@ class Shell(private val vm: LauncherViewModel) {
                 "no contacts app",
             )
         },
-        Cmd("email", "email <name|address>", "compose an email") { _, rest ->
-            val addr = if ('@' in rest || rest.isBlank()) rest else findContact(rest)?.email ?: error("no email for '$rest'")
-            vm.email(addr)
+        Cmd("email", "email <name|address> [subject]", "compose an email") { args, rest ->
+            if (rest.isBlank()) { vm.email(""); return@Cmd }
+            // whole text names a contact → no subject; otherwise first word is who, the rest the subject
+            val whole = vm.contacts.value.firstOrNull { it.name.lowercase().startsWith(rest.lowercase()) && it.email != null }
+            if (whole != null) { vm.email(whole.email!!); return@Cmd }
+            val first = args[0]
+            val addr = if ('@' in first) first else findContact(first)?.email ?: error("no email for '$first'")
+            vm.email(addr, rest.substringAfter(first).trim().ifBlank { null })
         },
         Cmd("cal", "cal [days]", "print upcoming events", setOf("agenda")) { args, _ ->
             val days = args.firstOrNull()?.toIntOrNull() ?: 1
