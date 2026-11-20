@@ -115,7 +115,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (vm.prefs.consumeFirstRun()) {
+        applyExtras(intent)
+
+        if (!intent.getBooleanExtra("demo", false) && vm.prefs.consumeFirstRun()) {
             vm.out("first run: requesting permissions — `grant` to retry, `access` for notifications", dev.foldterm.launcher.shell.LineKind.DIM)
             vm.requestAllPermissions()
         }
@@ -154,8 +156,26 @@ class MainActivity : ComponentActivity() {
         vm.widgetsHost.stopListening()
     }
 
+    /**
+     * Launch extras used for demos and screenshots:
+     * demo=true, theme=<name>, section=<id>, drawer=true, prompt=<text>, iconStyle=<color|mono>.
+     */
+    private fun applyExtras(i: Intent) {
+        if (i.getBooleanExtra("demo", false)) { vm.prefs.consumeFirstRun(); vm.loadDemo() }
+        i.getStringExtra("theme")?.let { vm.prefs.setTheme(it) }
+        i.getStringExtra("iconStyle")?.let { vm.prefs.setIconStyle(it) }
+        i.getStringExtra("section")?.let { id ->
+            vm.drawerOpen.value = false; vm.shellOpen.value = false; vm.input.value = ""
+            Section.find(id)?.let { vm.go(it) }
+        }
+        if (i.getBooleanExtra("drawer", false)) vm.drawerOpen.value = true
+        i.getStringExtra("prompt")?.let { vm.shellOpen.value = true; vm.input.value = it }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
+        applyExtras(intent)
         // Pressing home while already home: close overlays, then return to the home pane.
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) vm.onHomePressed()
     }

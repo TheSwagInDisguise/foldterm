@@ -244,8 +244,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ───────────────────────── refresh ─────────────────────────
 
+    /** Demo mode (screenshots): live data loading is paused so sample data stays put. */
+    var demo = false
+
     fun refresh(force: Boolean = false) {
         controlsTick.value++
+        if (demo) { vitals.value = deviceRepo.vitals(); return }
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         if (prefs.morningBrief.value && hour in 4..11 && prefs.firstOpenToday()) {
             viewModelScope.launch { delay(2500); brief(); shellOpen.value = true }
@@ -267,6 +271,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshPermissions() {
+        if (demo) return
         fun has(p: String) = ctx.checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
         perms.value = linkedMapOf(
             "calendar" to has(Manifest.permission.READ_CALENDAR),
@@ -649,6 +654,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val usage = MutableStateFlow<dev.foldterm.launcher.data.UsageReport?>(null)
 
     fun loadUsage() {
+        if (demo) return
         viewModelScope.launch { usage.value = withContext(Dispatchers.Default) { runCatching { screenTime.report() }.getOrNull() } }
     }
     /** Bumped after a control changes so the Controls pane re-reads system state. */
