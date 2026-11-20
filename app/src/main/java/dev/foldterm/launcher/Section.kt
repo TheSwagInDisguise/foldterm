@@ -18,6 +18,7 @@ fun orderedSections(order: List<String>): List<Section> {
 
 enum class Section(val id: String, val title: String, val glyph: String) {
     HOME("home", "Home", "⌂"),
+    HUB("hub", "Hub", "⋯"),
     CHAT("chat", "Chat", "»"),
     MAIL("mail", "Mail", "@"),
     CALENDAR("cal", "Calendar", "▦"),
@@ -71,6 +72,7 @@ enum class Section(val id: String, val title: String, val glyph: String) {
                     "podcast", "pods" -> PODCASTS
                     "compass", "level", "dice", "tool" -> TOOLS
                     "memo", "voice", "record", "recorder" -> MEMOS
+                    "more", "all", "sections" -> HUB
                     else -> null
                 }
         }

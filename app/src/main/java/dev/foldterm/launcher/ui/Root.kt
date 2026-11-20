@@ -120,6 +120,7 @@ import dev.foldterm.launcher.ui.screens.LinksScreen
 import dev.foldterm.launcher.ui.screens.PodcastsScreen
 import dev.foldterm.launcher.ui.screens.ToolsScreen
 import dev.foldterm.launcher.ui.screens.MemosScreen
+import dev.foldterm.launcher.ui.screens.HubScreen
 import dev.foldterm.launcher.ui.screens.WeatherScreen
 import dev.foldterm.launcher.ui.screens.MediaScreen
 import dev.foldterm.launcher.ui.screens.NotificationCentre
@@ -431,6 +432,7 @@ private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Mo
             Section.PODCASTS -> PodcastsScreen(vm)
             Section.TOOLS -> ToolsScreen(vm)
             Section.MEMOS -> MemosScreen(vm)
+            Section.HUB -> HubScreen(vm)
             Section.WIDGETS -> WidgetsScreen(vm)
             Section.SETTINGS -> SettingsScreen(vm)
         }

@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.59.0" to listOf("Hub: every section as a tile (⋯ in the sidebar, or `cd hub`) — trim the sidebar in Settings without losing anything"),
     "0.58.0" to listOf("Voice memos pane: record, play, share and delete (`memo`)"),
     "0.57.0" to listOf("Tools pane: compass, bubble level, dice, coin and tally", "`roll 2d6`, `flip`"),
     "0.56.0" to listOf("`translate es good morning`", "`price btc` in your currency", "stopwatch card with laps for Home and cover"),
