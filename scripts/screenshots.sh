@@ -12,6 +12,14 @@ sleep 3
 adb wait-for-device
 adb install -r -g "$APK"
 
+# FoldTerm becomes home; the stock launcher (and its taskbar) is switched off so it
+# can't freeze or draw over the captures
+adb shell cmd role add-role-holder android.app.role.HOME "$PKG" 0 || adb shell cmd package set-home-activity "$ACT" || true
+adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
+adb shell am force-stop com.google.android.apps.nexuslauncher || true
+adb shell settings put global hide_error_dialogs 1 || true
+sleep 30
+
 # fixed 09:35 so "happening now" and the agenda look like a working morning
 adb shell settings put global auto_time 0
 adb shell settings put global auto_time_zone 0
@@ -31,8 +39,10 @@ dm notifications -e visible false
 shot() {
   local name=$1; shift
   adb shell am start -n "$ACT" "$@" >/dev/null
-  sleep 5
-  adb exec-out screencap -p > "shots/$name.png"
+  sleep 8
+  # capture to a file and pull it, so warnings never end up inside the PNG
+  adb shell screencap -p /sdcard/shot.png
+  adb pull /sdcard/shot.png "shots/$name.png" >/dev/null
 }
 
 adb emu unfold || true
