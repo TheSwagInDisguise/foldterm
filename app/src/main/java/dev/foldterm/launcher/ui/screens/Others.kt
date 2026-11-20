@@ -532,6 +532,8 @@ fun SettingsScreen(vm: LauncherViewModel) {
     var customTint by remember(iconTint) { mutableStateOf(if (iconTint.startsWith("#")) iconTint else "") }
     val hiddenKeys by vm.prefs.hidden.collectAsStateWithLifecycle()
     val sectionOrder by vm.prefs.sectionOrder.collectAsStateWithLifecycle()
+    val coverMode by vm.prefs.coverMode.collectAsStateWithLifecycle()
+    val coverCards by vm.prefs.coverCards.collectAsStateWithLifecycle()
     val hiddenSections by vm.prefs.hiddenSections.collectAsStateWithLifecycle()
     val allApps by vm.allApps.collectAsStateWithLifecycle()
     val hiddenApps = remember(hiddenKeys, allApps) { allApps.filter { it.key in hiddenKeys } }
@@ -645,6 +647,43 @@ fun SettingsScreen(vm: LauncherViewModel) {
                             }
                         }
                         Spacer(Modifier.height(4.dp))
+                    }
+                    Divider()
+                    T("cover screen", weight = FontWeight.Bold)
+                    T("what Home shows when the phone is folded", color = t.dim, size = 12.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Tabs(listOf("cover cards", "classic home"), if (coverMode) 0 else 1, { vm.prefs.setCoverMode(it == 0) })
+                    if (coverMode) {
+                        Spacer(Modifier.height(6.dp))
+                        val enabled = coverCards
+                        val rows = enabled.mapNotNull { id -> COVER_CARDS.firstOrNull { it.first == id } } + COVER_CARDS.filter { it.first !in enabled }
+                        rows.forEach { (id, label) ->
+                            val on = id in enabled
+                            val idx = enabled.indexOf(id)
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (on) t.panelAlt else Color.Transparent)
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                T(label, color = if (on) t.fg else t.dim, modifier = Modifier.weight(1f))
+                                if (on) {
+                                    T("↑", size = 16.sp, color = if (idx > 0) t.fg else t.dim.copy(alpha = 0.3f),
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = idx > 0) {
+                                            vm.prefs.setCoverCards(enabled.toMutableList().apply { add(idx - 1, removeAt(idx)) })
+                                        }.padding(horizontal = 10.dp, vertical = 6.dp))
+                                    T("↓", size = 16.sp, color = if (idx < enabled.lastIndex) t.fg else t.dim.copy(alpha = 0.3f),
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = idx < enabled.lastIndex) {
+                                            vm.prefs.setCoverCards(enabled.toMutableList().apply { add(idx + 1, removeAt(idx)) })
+                                        }.padding(horizontal = 10.dp, vertical = 6.dp))
+                                }
+                                Box(
+                                    Modifier.width(56.dp).clip(RoundedCornerShape(50)).background(if (on) t.button else t.chip)
+                                        .clickable { vm.prefs.setCoverCards(if (on) enabled - id else enabled + id) }.padding(vertical = 5.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) { T(if (on) "on" else "off", color = if (on) t.onButton else t.dim, size = 12.sp, weight = FontWeight.Bold) }
+                            }
+                            Spacer(Modifier.height(4.dp))
+                        }
                     }
                     if (hiddenApps.isNotEmpty()) {
                         Divider()

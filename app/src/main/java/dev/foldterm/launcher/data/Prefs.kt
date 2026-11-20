@@ -46,6 +46,15 @@ class Prefs(context: Context) {
         sp.edit().remove("hiddenSections").apply()
     }
 
+    /** Cover-screen Home: on = compact card layout when the window is narrow. */
+    val coverMode = MutableStateFlow(sp.getBoolean("coverMode", true))
+    /** Enabled cover cards in order. */
+    val coverCards = MutableStateFlow(
+        (sp.getString("coverCards", null) ?: "clock|next|dial|inbox|media").split('|').filter { it.isNotBlank() },
+    )
+    fun setCoverMode(v: Boolean) { coverMode.value = v; sp.edit().putBoolean("coverMode", v).apply() }
+    fun setCoverCards(v: List<String>) { coverCards.value = v; sp.edit().putString("coverCards", v.joinToString("|")).apply() }
+
     /** Apps left out of badges and the Home summary. */
     val mutedApps = MutableStateFlow(sp.getStringSet("mutedApps", emptySet())!!.toSet())
     /** Apps always listed first in the notification centre. */

@@ -63,8 +63,11 @@ import java.util.Calendar
 
 @Composable
 fun HomeScreen(vm: LauncherViewModel) {
+    val coverMode by vm.prefs.coverMode.collectAsStateWithLifecycle()
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        if (maxWidth >= 640.dp) {
+        if (maxWidth < 640.dp && coverMode) {
+            CoverHome(vm)
+        } else if (maxWidth >= 640.dp) {
             TwoPane(
                 Modifier.fillMaxSize(),
                 left = { m ->
