@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -79,10 +80,12 @@ fun T(
     size: TextUnit = 14.sp,
     weight: FontWeight = FontWeight.Normal,
     maxLines: Int = Int.MAX_VALUE,
+    align: TextAlign? = null,
 ) {
     Text(
         text = text,
         modifier = modifier,
+        textAlign = align,
         color = color,
         fontSize = size,
         fontWeight = weight,

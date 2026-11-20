@@ -88,6 +88,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -706,14 +707,16 @@ private fun AppDrawer(vm: LauncherViewModel) {
         if (filter.isBlank()) apps else apps.filter { it.label.contains(filter, true) || it.packageName.contains(filter, true) }
     }
     Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (t.dark) 0.5f else 0.2f))
+        Modifier.fillMaxSize().background(t.bg.copy(alpha = 0.7f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 vm.drawerOpen.value = false; vm.splitPick.value = null
             },
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.TopCenter,
     ) {
         Panel(
-            Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.86f).widthIn(max = 1100.dp)
+            // sits between the top of the screen and the dock instead of floating over it
+            Modifier.padding(top = 8.dp, bottom = 104.dp).fillMaxWidth(0.94f).fillMaxHeight().widthIn(max = 1100.dp)
+                .background(t.bg, RoundedCornerShape(22.dp))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
             title = "apps (${apps.size})",
             trailing = { TButton("close") { vm.drawerOpen.value = false; vm.splitPick.value = null } },
@@ -750,13 +753,18 @@ private fun AppDrawer(vm: LauncherViewModel) {
                 shown.firstOrNull()?.let { if (pick != null && pick.uniqueKey != it.uniqueKey) vm.split(pick, it) else vm.launch(it) }
             })
             Spacer(Modifier.height(12.dp))
-            LazyVerticalGrid(columns = GridCells.Adaptive(104.dp), modifier = Modifier.fillMaxSize()) {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(100.dp),
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 items(shown.size, key = { shown[it].uniqueKey }) { i ->
                     val app = shown[i]
                     var menu by remember { mutableStateOf(false) }
                     Box {
                         Column(
-                            Modifier.padding(4.dp).clip(RoundedCornerShape(14.dp))
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
                                 .combinedClickable(
                                     onClick = {
                                         val pick = vm.splitPick.value
@@ -772,8 +780,8 @@ private fun AppDrawer(vm: LauncherViewModel) {
                                 Badge(unreadByPkg[app.packageName] ?: 0, Modifier.align(Alignment.TopEnd))
                             }
                             Spacer(Modifier.height(6.dp))
-                            T(app.label, size = 12.sp, maxLines = 1)
-                            if (app.isWork) T("work", color = t.accent2, size = 10.sp)
+                            T(app.label, size = 12.sp, maxLines = 1, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                            if (app.isWork) T("work", color = t.accent2, size = 10.sp, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(text = { T("split with…") }, onClick = { menu = false; filter = ""; vm.splitPick.value = app })
