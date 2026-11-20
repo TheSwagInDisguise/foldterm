@@ -117,6 +117,7 @@ import dev.foldterm.launcher.ui.screens.RadioScreen
 import dev.foldterm.launcher.ui.screens.HabitsScreen
 import dev.foldterm.launcher.ui.screens.MoneyScreen
 import dev.foldterm.launcher.ui.screens.LinksScreen
+import dev.foldterm.launcher.ui.screens.PodcastsScreen
 import dev.foldterm.launcher.ui.screens.WeatherScreen
 import dev.foldterm.launcher.ui.screens.MediaScreen
 import dev.foldterm.launcher.ui.screens.NotificationCentre
@@ -425,6 +426,7 @@ private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Mo
             Section.HABITS -> HabitsScreen(vm)
             Section.MONEY -> MoneyScreen(vm)
             Section.LINKS -> LinksScreen(vm)
+            Section.PODCASTS -> PodcastsScreen(vm)
             Section.WIDGETS -> WidgetsScreen(vm)
             Section.SETTINGS -> SettingsScreen(vm)
         }

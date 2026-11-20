@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.55.0" to listOf("Podcasts pane: subscribe to any podcast feed and play episodes (`podcast add <feed url>`)"),
     "0.54.0" to listOf("Share → FoldTerm: links go to the new Links pane, text becomes a note", "`save <url>` from the prompt; links card for Home and cover"),
     "0.53.0" to listOf("countdowns: `countdown add japan trip dec 20`, with a card for Home and the cover screen", "game boards fit the inner screen"),
     "0.52.0" to listOf("`define <word>` for dictionary definitions", "`wiki <topic>` for a Wikipedia summary (`wiki open` for the article)"),
@@ -662,6 +663,29 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val controls = dev.foldterm.launcher.data.Controls(app)
     val radio = dev.foldterm.launcher.data.Radio(app)
     val habits = MutableStateFlow(prefs.loadHabits())
+    val episodes = MutableStateFlow<List<dev.foldterm.launcher.data.Episode>>(emptyList())
+    val podcastStatus = MutableStateFlow("")
+
+    fun loadPodcasts() {
+        if (demo) return
+        podcastStatus.value = "fetching…"
+        viewModelScope.launch {
+            val all = withContext(Dispatchers.IO) {
+                prefs.podcastFeeds.value.flatMap { f -> runCatching { online.podcast(f).second }.getOrDefault(emptyList()) }
+            }.sortedByDescending { it.published ?: 0L }
+            episodes.value = all
+            podcastStatus.value = if (all.isEmpty()) "no episodes (offline or bad feed)" else ""
+        }
+    }
+
+    fun playEpisode(e: dev.foldterm.launcher.data.Episode) {
+        radio.play(dev.foldterm.launcher.data.Station("${e.show}: ${e.title}", e.audio))
+    }
+
+    fun addPodcast(url: String) {
+        if (!url.startsWith("http")) { out("podcast feeds start with https://", LineKind.ERR); return }
+        prefs.setPodcastFeeds((prefs.podcastFeeds.value + url.trim()).distinct()); loadPodcasts()
+    }
     val expenses = MutableStateFlow(prefs.loadExpenses().sortedByDescending { it.time })
 
     fun openBookmark(b: dev.foldterm.launcher.data.Bookmark) {

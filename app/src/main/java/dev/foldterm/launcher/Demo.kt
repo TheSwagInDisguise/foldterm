@@ -139,6 +139,12 @@ fun LauncherViewModel.loadDemo() {
         ex(9, 64.3, "groceries", 8), ex(10, 9.99, "subscriptions music", 10), ex(11, 45.0, "gym pass", 12),
     )
     prefs.setBudget(1200.0)
+    episodes.value = listOf(
+        dev.foldterm.launcher.data.Episode("Hard Fork", "Foldables finally make sense", "https://example.com/a.mp3", now - 6 * h, "58:12"),
+        dev.foldterm.launcher.data.Episode("Up First", "Friday, November 20", "https://example.com/b.mp3", now - 4 * h, "14:03"),
+        dev.foldterm.launcher.data.Episode("Hard Fork", "The command line strikes back", "https://example.com/c.mp3", now - 7 * 24 * h, "1:02:40"),
+        dev.foldterm.launcher.data.Episode("Up First", "Thursday, November 19", "https://example.com/d.mp3", now - 28 * h, "13:47"),
+    )
     prefs.saveBookmarks(listOf(
         dev.foldterm.launcher.data.Bookmark(1, "https://example.com/hinge", "How the Fold's hinge got so thin", now - 2 * h, false),
         dev.foldterm.launcher.data.Bookmark(2, "https://example.com/terminal", "In praise of the command line, 50 years on", now - 20 * h, false),

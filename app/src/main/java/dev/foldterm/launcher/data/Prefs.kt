@@ -457,6 +457,11 @@ class Prefs(context: Context) {
     /** Re-reads things other components (the share sheet) may have written. */
     fun reloadShared() { notes.value = loadNotes(); bookmarks.value = loadBookmarks() }
 
+    val podcastFeeds = MutableStateFlow(
+        (sp.getString("podcasts", null) ?: "https://feeds.simplecast.com/54nAGcIl\nhttps://feeds.npr.org/510289/podcast.xml").lines().filter { it.isNotBlank() },
+    )
+    fun setPodcastFeeds(v: List<String>) { podcastFeeds.value = v; sp.edit().putString("podcasts", v.joinToString("\n")).apply() }
+
     fun gameBest(key: String): Int = sp.getInt("best_$key", 0)
     fun setGameBest(key: String, v: Int) { sp.edit().putInt("best_$key", v).apply() }
 

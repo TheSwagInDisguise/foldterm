@@ -855,6 +855,10 @@ class Shell(private val vm: LauncherViewModel) {
             vm.prefs.addBookmark(url, rest.substringAfter(raw).trim().ifBlank { url.substringAfter("//").substringBefore('/') })
             vm.out("saved for later — `cd links`", LineKind.OK)
         },
+        Cmd("podcast", "podcast [add <feed url>]", "podcasts", setOf("podcasts", "pod")) { args, rest ->
+            if (args.firstOrNull() == "add") { vm.addPodcast(rest.substringAfter("add").trim()); vm.out("subscribed", LineKind.OK); return@Cmd }
+            vm.go(Section.PODCASTS); vm.shellOpen.value = false
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

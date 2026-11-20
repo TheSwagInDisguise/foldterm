@@ -176,6 +176,34 @@ class OnlineRepository(private val ctx: Context) {
         feeds.flatMap { url -> runCatching { parseFeed(url, get(url)) }.getOrDefault(emptyList()) }
             .sortedByDescending { it.published ?: 0L }
 
+    /** Podcast feed → (show title, latest episodes with audio). */
+    fun podcast(url: String): Pair<String, List<Episode>> {
+        val p = Xml.newPullParser()
+        p.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
+        p.setInput(get(url).reader())
+        var show = URL(url).host
+        var sawShow = false
+        var inItem = false
+        var title = ""; var audio = ""; var date: String? = null; var dur = ""
+        val out = mutableListOf<Episode>()
+        while (p.next() != XmlPullParser.END_DOCUMENT && out.size < 30) {
+            when (p.eventType) {
+                XmlPullParser.START_TAG -> when (p.name) {
+                    "item" -> { inItem = true; title = ""; audio = ""; date = null; dur = "" }
+                    "title" -> { val tx = runCatching { p.nextText().trim() }.getOrDefault(""); if (inItem) title = tx else if (!sawShow) { show = tx; sawShow = true } }
+                    "enclosure" -> if (inItem) audio = p.getAttributeValue(null, "url") ?: audio
+                    "pubDate" -> if (inItem) date = runCatching { p.nextText().trim() }.getOrNull()
+                    "itunes:duration" -> if (inItem) dur = runCatching { p.nextText().trim() }.getOrDefault("")
+                }
+                XmlPullParser.END_TAG -> if (p.name == "item") {
+                    inItem = false
+                    if (title.isNotBlank() && audio.startsWith("http")) out += Episode(show, title, audio.replace("http://", "https://"), parseDate(date), dur)
+                }
+            }
+        }
+        return show to out
+    }
+
     private fun parseFeed(url: String, xml: String): List<NewsItem> {
         val p = Xml.newPullParser()
         p.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)

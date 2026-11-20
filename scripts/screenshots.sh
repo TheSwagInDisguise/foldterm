@@ -66,6 +66,7 @@ shot games           --es section games
 shot radio           --es theme amber --es section radio
 shot money           --es theme phosphor --es section money
 shot links           --es theme pastel --es section links
+shot podcasts        --es theme phosphor --es section podcasts
 
 adb emu fold || true
 sleep 6
