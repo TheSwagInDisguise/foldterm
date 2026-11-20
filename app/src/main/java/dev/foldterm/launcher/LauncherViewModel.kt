@@ -288,6 +288,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 .map { a -> labels[a.key]?.let { a.copy(label = it) } ?: a }
                 .sortedWith(compareBy({ it.label.lowercase() }, { it.isWork }))
             applyHidden()
+            rebuildShortcutIndex()
         }
     }
 
@@ -539,6 +540,23 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val app = apps.value.firstOrNull { it.key == key && !it.isWork } ?: apps.value.firstOrNull { it.key == key }
             ?: apps.value.firstOrNull { it.packageName == key.substringBefore('/') } ?: return false
         launch(app); return true
+    }
+
+    /** Shortcut index for prompt search, rebuilt with the app list (only when we're the home app). */
+    val shortcutIndex = MutableStateFlow<List<Pair<AppEntry, android.content.pm.ShortcutInfo>>>(emptyList())
+
+    fun rebuildShortcutIndex() {
+        viewModelScope.launch {
+            shortcutIndex.value = withContext(Dispatchers.IO) {
+                if (!appsRepo.canUseShortcuts()) emptyList()
+                else apps.value.filter { !it.isWork }.flatMap { a -> appsRepo.shortcuts(a).map { a to it } }
+            }
+        }
+    }
+
+    fun startShortcut(s: android.content.pm.ShortcutInfo) {
+        runCatching { appsRepo.startShortcut(s) }.onFailure { out("shortcut failed: ${it.message}", LineKind.ERR) }
+        shellOpen.value = false; drawerOpen.value = false; input.value = ""
     }
 
     fun dockApps(): List<AppEntry> {

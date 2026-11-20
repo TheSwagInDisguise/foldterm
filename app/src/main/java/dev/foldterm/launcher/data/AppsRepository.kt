@@ -55,6 +55,30 @@ class AppsRepository(private val ctx: Context) {
         return bmp
     }
 
+    /** App shortcuts need the home-app role; false means the system won't share them. */
+    fun canUseShortcuts(): Boolean = runCatching { launcherApps.hasShortcutHostPermission() }.getOrDefault(false)
+
+    /** Static, dynamic and pinned shortcuts for [app] (empty without the home role). */
+    fun shortcuts(app: AppEntry): List<android.content.pm.ShortcutInfo> {
+        if (!canUseShortcuts()) return emptyList()
+        val q = LauncherApps.ShortcutQuery()
+            .setPackage(app.packageName)
+            .setQueryFlags(
+                LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED,
+            )
+        return runCatching { launcherApps.getShortcuts(q, app.user) }.getOrNull().orEmpty()
+            .filter { it.isEnabled }.sortedBy { it.rank }.take(8)
+    }
+
+    fun startShortcut(s: android.content.pm.ShortcutInfo) {
+        launcherApps.startShortcut(s, null, null)
+    }
+
+    fun shortcutIcon(s: android.content.pm.ShortcutInfo, sizePx: Int = 96): Bitmap? = runCatching {
+        launcherApps.getShortcutIconDrawable(s, 0)?.toBitmap(sizePx, sizePx)
+    }.getOrNull()
+
     fun launch(app: AppEntry) {
         launcherApps.startMainActivity(app.component, app.user, null, null)
     }
