@@ -116,6 +116,8 @@ import dev.foldterm.launcher.ui.screens.MediaScreen
 import dev.foldterm.launcher.ui.screens.NotificationCentre
 import dev.foldterm.launcher.ui.screens.ControlsScreen
 import dev.foldterm.launcher.ui.screens.UsageScreen
+import dev.foldterm.launcher.ui.screens.FocusScreen
+import dev.foldterm.launcher.ui.screens.FocusBanner
 import dev.foldterm.launcher.ui.screens.WidgetsScreen
 import androidx.compose.ui.input.key.isAltPressed
 import dev.foldterm.launcher.ui.screens.PeopleScreen
@@ -213,6 +215,7 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
                 Column(Modifier.fillMaxSize()) {
                     Column(Modifier.fillMaxWidth().height(topH).padding(horizontal = 16.dp)) {
                         TopBar(vm, section, expanded, promptFocus, Modifier.onGloballyPositioned { promptBottom = (it.positionInWindow().y + it.size.height).toInt() })
+                    FocusBanner(vm)
                         Row(Modifier.weight(1f).padding(bottom = 8.dp)) {
                             if (expanded) NavRail(vm, section)
                             SectionContent(vm, section, Modifier.weight(1f).fillMaxHeight())
@@ -227,6 +230,7 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
             } else {
                 Column(Modifier.fillMaxSize().padding(horizontal = if (expanded) 16.dp else 10.dp)) {
                     TopBar(vm, section, expanded, promptFocus, Modifier.onGloballyPositioned { promptBottom = (it.positionInWindow().y + it.size.height).toInt() })
+                    FocusBanner(vm)
                     Row(Modifier.weight(1f)) {
                         if (expanded) NavRail(vm, section)
                         SectionContent(vm, section, Modifier.weight(1f).fillMaxHeight())
@@ -298,6 +302,7 @@ private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Mo
             Section.NOTIFS -> NotificationCentre(vm)
             Section.CONTROLS -> ControlsScreen(vm)
             Section.USAGE -> UsageScreen(vm)
+            Section.FOCUS -> FocusScreen(vm)
             Section.NOTES -> NotesScreen(vm)
             Section.WIDGETS -> WidgetsScreen(vm)
             Section.SETTINGS -> SettingsScreen(vm)

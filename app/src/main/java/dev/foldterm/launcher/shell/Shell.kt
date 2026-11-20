@@ -560,6 +560,20 @@ class Shell(private val vm: LauncherViewModel) {
             vm.out("today ${Fmt.duration(r.totalMs)} · ${r.unlocks} unlocks", LineKind.ACCENT)
             r.apps.take(8).forEach { vm.out("  ${Fmt.duration(it.ms).padStart(6)}  ${vm.appLabelForPackage(it.pkg)}") }
         },
+        Cmd("focus", "focus [25m] [label] | stop", "focus session: hides distracting apps", setOf("pomodoro")) { args, _ ->
+            val first = args.firstOrNull()?.lowercase()
+            when {
+                first == "stop" || first == "end" -> vm.stopFocus()
+                first == null && vm.focusActive() -> vm.out("focusing until ${Fmt.time(vm.prefs.focusUntil.value)}${vm.prefs.focusLabel.value.let { if (it.isNotBlank()) " · $it" else "" }}")
+                else -> {
+                    val secs = first?.let { When.duration(it) }
+                    val minutes = (secs ?: 25 * 60) / 60
+                    val label = (if (secs != null) args.drop(1) else args).joinToString(" ")
+                    require(minutes in 1..600) { "focus length must be 1m–10h" }
+                    vm.startFocus(minutes, label)
+                }
+            }
+        },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->

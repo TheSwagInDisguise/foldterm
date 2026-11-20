@@ -46,6 +46,33 @@ class Prefs(context: Context) {
         sp.edit().remove("hiddenSections").apply()
     }
 
+    // ── focus mode ──
+    val focusUntil = MutableStateFlow(sp.getLong("focusUntil", 0L))
+    val focusLabel = MutableStateFlow(sp.getString("focusLabel", "") ?: "")
+    val focusBlock = MutableStateFlow(sp.getStringSet("focusBlock", emptySet())!!.toSet())
+    val focusDnd = MutableStateFlow(sp.getBoolean("focusDnd", true))
+    fun setFocus(until: Long, label: String) {
+        focusUntil.value = until; focusLabel.value = label
+        sp.edit().putLong("focusUntil", until).putString("focusLabel", label)
+            .putLong("focusStart", if (until > 0) System.currentTimeMillis() else 0L).apply()
+    }
+    fun focusStart(): Long = sp.getLong("focusStart", 0L)
+    fun toggleFocusBlock(key: String) {
+        val next = focusBlock.value.toMutableSet().apply { if (!add(key)) remove(key) }
+        focusBlock.value = next
+        sp.edit().putStringSet("focusBlock", next).apply()
+    }
+    fun setFocusDnd(v: Boolean) { focusDnd.value = v; sp.edit().putBoolean("focusDnd", v).apply() }
+    /** Minutes focused today (resets each day). */
+    fun focusToday(): Long {
+        val day = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
+        return if (sp.getString("focusDay", "") == day) sp.getLong("focusMs", 0L) else 0L
+    }
+    fun addFocus(ms: Long) {
+        val day = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
+        sp.edit().putString("focusDay", day).putLong("focusMs", focusToday() + ms).apply()
+    }
+
     /** App drawer order: "az", "used" or "new". */
     val drawerSort = MutableStateFlow(sp.getString("drawerSort", "az") ?: "az")
     fun setDrawerSort(v: String) { drawerSort.value = v; sp.edit().putString("drawerSort", v).apply() }

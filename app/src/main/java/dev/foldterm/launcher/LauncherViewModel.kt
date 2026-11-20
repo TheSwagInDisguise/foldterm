@@ -143,7 +143,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             while (true) {
                 now.value = System.currentTimeMillis()
-                delay(30_000)
+                delay(15_000)
+                // checked after the delay so it never runs while the ViewModel is still being built
+                val until = prefs.focusUntil.value
+                if (until in 1..System.currentTimeMillis()) stopFocus(completed = true)
             }
         }
         out("foldterm ${BuildConfig.VERSION_NAME} — type `help`", LineKind.DIM)
@@ -368,8 +371,40 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun applyHidden() {
-        val hidden = prefs.hidden.value
+        val hidden = prefs.hidden.value + (if (focusActive()) prefs.focusBlock.value else emptySet())
         apps.value = allApps.value.filter { it.key !in hidden }
+    }
+
+    // ───────────────────────── focus mode ─────────────────────────
+
+    fun focusActive(): Boolean = prefs.focusUntil.value > System.currentTimeMillis()
+    fun startFocus(minutes: Int, label: String = "") {
+        val ms = minutes * 60_000L
+        prefs.setFocus(System.currentTimeMillis() + ms, label)
+        applyHidden()
+        if (prefs.focusDnd.value) controls.setDnd(true)?.let { out("focus: $it — DND not changed", LineKind.DIM) }
+        // a clock-app timer rings at the end even if the launcher is in the background
+        runCatching {
+            ctx.startActivity(
+                Intent(android.provider.AlarmClock.ACTION_SET_TIMER)
+                    .putExtra(android.provider.AlarmClock.EXTRA_LENGTH, minutes * 60)
+                    .putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, true)
+                    .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, "Focus${if (label.isNotBlank()) ": $label" else ""} done")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+        out("focus ${minutes}m${if (label.isNotBlank()) " · $label" else ""} — ${prefs.focusBlock.value.size} apps hidden", LineKind.OK)
+    }
+
+    fun stopFocus(completed: Boolean = false) {
+        if (prefs.focusUntil.value == 0L) return
+        val end = minOf(System.currentTimeMillis(), prefs.focusUntil.value)
+        val start = prefs.focusStart().takeIf { it > 0 } ?: end
+        if (end > start) prefs.addFocus(end - start)
+        prefs.setFocus(0L, "")
+        applyHidden()
+        if (prefs.focusDnd.value) controls.setDnd(false)
+        out(if (completed) "focus session complete ✓" else "focus ended", LineKind.OK)
     }
 
     fun setHidden(app: AppEntry, hide: Boolean) {
