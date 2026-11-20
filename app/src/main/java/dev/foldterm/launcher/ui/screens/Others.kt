@@ -1,0 +1,601 @@
+package dev.foldterm.launcher.ui.screens
+
+import android.content.Intent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.foldterm.launcher.BuildConfig
+import dev.foldterm.launcher.LauncherViewModel
+import dev.foldterm.launcher.data.ContactSummary
+import dev.foldterm.launcher.data.NotifKind
+import dev.foldterm.launcher.ui.AsyncBitmap
+import dev.foldterm.launcher.ui.Avatar
+import dev.foldterm.launcher.ui.Chip
+import dev.foldterm.launcher.ui.Divider
+import dev.foldterm.launcher.ui.Empty
+import dev.foldterm.launcher.ui.Field
+import dev.foldterm.launcher.ui.Fmt
+import dev.foldterm.launcher.ui.KV
+import dev.foldterm.launcher.ui.LocalFold
+import dev.foldterm.launcher.ui.LocalTerm
+import dev.foldterm.launcher.ui.Panel
+import dev.foldterm.launcher.ui.T
+import dev.foldterm.launcher.ui.TButton
+import dev.foldterm.launcher.ui.Tabs
+import dev.foldterm.launcher.ui.Themes
+import dev.foldterm.launcher.ui.TwoPane
+import dev.foldterm.launcher.ui.nameColor
+
+@Composable
+private fun Adaptive(left: @Composable (Modifier) -> Unit, right: @Composable (Modifier) -> Unit, leftFraction: Float = 0.42f) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (maxWidth >= 640.dp) {
+            TwoPane(Modifier.fillMaxSize(), leftFraction = leftFraction, left = left, right = right)
+        } else {
+            Column(Modifier.fillMaxSize()) {
+                left(Modifier.fillMaxWidth().weight(1f))
+                Spacer(Modifier.height(10.dp))
+                right(Modifier.fillMaxWidth().weight(1f))
+            }
+        }
+    }
+}
+
+// ───────────────────────── mail / chat ─────────────────────────
+
+@Composable
+fun MessagesScreen(vm: LauncherViewModel, kind: NotifKind) {
+    val t = LocalTerm.current
+    val all by vm.notifications.collectAsStateWithLifecycle()
+    val access by vm.notifAccess.collectAsStateWithLifecycle()
+    val selectedKey by vm.selectedNotif.collectAsStateWithLifecycle()
+    var showAll by rememberSaveable { mutableStateOf(false) }
+    val list = remember(all, kind, showAll) {
+        all.filter { (it.kind == kind || (showAll && it.kind == NotifKind.OTHER)) }
+    }
+    val sel = list.firstOrNull { it.key == selectedKey } ?: list.firstOrNull { !it.removed }
+    val label = if (kind == NotifKind.MAIL) "mail" else "chat"
+
+    if (!access) {
+        Panel(Modifier.fillMaxSize(), title = label) {
+            T("$ tail -f /dev/notifications", color = t.accent)
+            Spacer(Modifier.height(6.dp))
+            T("permission denied", color = t.err)
+            Spacer(Modifier.height(12.dp))
+            T("FoldTerm reads $label from your apps' notifications — it never logs in to your accounts. Grant notification access to fill this pane (and to enable the now-playing widget).", color = t.dim)
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TButton("grant access", primary = true) { vm.openNotificationAccess() }
+                TButton("open $label app") { openCategoryApp(vm, kind) }
+            }
+        }
+        return
+    }
+
+    Adaptive(
+        left = { m ->
+            Panel(m, title = "$label (${list.count { !it.removed }})", trailing = {
+                T(if (showAll) "all ▾" else "$label ▾", color = t.dim, size = 12.sp, modifier = Modifier.clickable { showAll = !showAll })
+            }) {
+                if (list.isEmpty()) {
+                    Empty("no $label notifications", "open $label app") { openCategoryApp(vm, kind) }
+                    return@Panel
+                }
+                LazyColumn(Modifier.fillMaxSize()) {
+                    items(list.size, key = { list[it].key + list[it].time }) { i ->
+                        val n = list[i]
+                        val isSel = n.key == sel?.key
+                        Column(
+                            Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(16.dp))
+                                .background(if (isSel) t.selection else Color.Transparent)
+                                .clickable { vm.selectedNotif.value = n.key }.padding(12.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (!n.removed) { T("● ", color = t.accent2, size = 12.sp) }
+                                T(n.title.ifBlank { n.app }, weight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f), color = if (n.removed) t.dim else t.fg)
+                                T(Fmt.ago(n.time), color = t.dim, size = 12.sp)
+                            }
+                            T(n.app, color = t.accent3, size = 12.sp, maxLines = 1)
+                            T(n.text, color = t.dim, size = 13.sp, maxLines = 2)
+                        }
+                    }
+                }
+            }
+        },
+        right = { m ->
+            Panel(m) {
+                if (sel == null) { Empty("nothing selected"); return@Panel }
+                var reply by remember(sel.key) { mutableStateOf("") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TButton("open", primary = true) { vm.openNotif(sel) }
+                    if (!sel.removed) TButton("dismiss") { vm.dismissNotif(sel) }
+                }
+                Spacer(Modifier.height(16.dp))
+                T(sel.title.ifBlank { sel.app }, size = 22.sp, weight = FontWeight.Bold, maxLines = 3)
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(sel.app, 40.dp, nameColor(sel.app))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        T(sel.app, weight = FontWeight.SemiBold)
+                        T(sel.pkg, color = t.dim, size = 12.sp)
+                    }
+                    T("${Fmt.dayLabel(sel.time)}, ${Fmt.time(sel.time)}", color = t.dim, size = 13.sp)
+                }
+                Spacer(Modifier.height(14.dp))
+                Box(
+                    Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(16.dp)).background(t.panelAlt)
+                        .border(1.dp, t.border, RoundedCornerShape(16.dp)).padding(18.dp),
+                ) {
+                    T(sel.body, size = 15.sp, modifier = Modifier.verticalScroll(rememberScrollState()))
+                }
+                if (sel.replyAction != null && !sel.removed) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Field(reply, { reply = it }, "reply…", Modifier.weight(1f), onDone = {
+                            if (reply.isNotBlank() && vm.replyNotif(sel, reply)) reply = ""
+                        })
+                        Spacer(Modifier.width(8.dp))
+                        TButton("send", primary = true, enabled = reply.isNotBlank()) {
+                            if (vm.replyNotif(sel, reply)) reply = ""
+                        }
+                    }
+                }
+            }
+        },
+    )
+}
+
+private fun openCategoryApp(vm: LauncherViewModel, kind: NotifKind) {
+    val cat = if (kind == NotifKind.MAIL) Intent.CATEGORY_APP_EMAIL else Intent.CATEGORY_APP_MESSAGING
+    vm.start(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, cat))
+}
+
+// ───────────────────────── people ─────────────────────────
+
+@Composable
+fun PeopleScreen(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val contacts by vm.contacts.collectAsStateWithLifecycle()
+    val ice by vm.prefs.ice.collectAsStateWithLifecycle()
+    val detail by vm.selectedContact.collectAsStateWithLifecycle()
+    val perms by vm.perms.collectAsStateWithLifecycle()
+    var filter by remember { mutableStateOf("") }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+
+    LaunchedEffect(contacts) {
+        if (vm.selectedContact.value == null) contacts.firstOrNull { it.id in ice }?.let { vm.selectContact(it) }
+            ?: contacts.firstOrNull()?.let { vm.selectContact(it) }
+    }
+
+    if (perms["contacts"] != true) {
+        Panel(Modifier.fillMaxSize(), title = "people") { Empty("contacts permission denied", "grant") { vm.requestPermission("contacts") } }
+        return
+    }
+
+    Adaptive(
+        leftFraction = 0.48f,
+        left = { m ->
+            Panel(m) {
+                Tabs(listOf("people", "favorites", "companies"), tab, { tab = it })
+                Spacer(Modifier.height(10.dp))
+                Field(filter, { filter = it }, "grep contacts…", Modifier.fillMaxWidth())
+                Spacer(Modifier.height(6.dp))
+                val shown = contacts.filter {
+                    filter.isBlank() || it.name.contains(filter, true) || (it.company?.contains(filter, true) == true) ||
+                        (it.phone?.filter { c -> c.isDigit() }?.contains(filter.filter { c -> c.isDigit() }.ifEmpty { "\u0000" }) == true)
+                }
+                LazyColumn(Modifier.fillMaxSize()) {
+                    fun header(text: String, color: Color) = item(key = "h_$text") {
+                        T(text, color = color, weight = FontWeight.Bold, modifier = Modifier.padding(top = 14.dp, bottom = 6.dp))
+                    }
+                    when (tab) {
+                        0 -> {
+                            val iceList = shown.filter { it.id in ice }
+                            if (iceList.isNotEmpty() && filter.isBlank()) {
+                                header("In case of emergency", t.err)
+                                iceList.forEach { c -> item(key = "ice${c.id}") { ContactRow(vm, c, detail?.summary?.id == c.id, ice = true) } }
+                            }
+                            val favs = shown.filter { it.starred }
+                            if (favs.isNotEmpty() && filter.isBlank()) {
+                                header("Favorites", t.dim)
+                                favs.forEach { c -> item(key = "fav${c.id}") { ContactRow(vm, c, detail?.summary?.id == c.id) } }
+                            }
+                            shown.groupBy { it.name.first().uppercaseChar().let { ch -> if (ch.isLetter()) ch else '#' } }.forEach { (letter, group) ->
+                                header(letter.toString(), t.dim)
+                                group.forEach { c -> item(key = "c${c.id}") { ContactRow(vm, c, detail?.summary?.id == c.id) } }
+                            }
+                        }
+                        1 -> shown.filter { it.starred }.forEach { c -> item(key = "f${c.id}") { ContactRow(vm, c, detail?.summary?.id == c.id) } }
+                        else -> shown.filter { it.company != null }.groupBy { it.company!! }.toSortedMap(String.CASE_INSENSITIVE_ORDER).forEach { (co, group) ->
+                            header(co, t.accent2)
+                            group.forEach { c -> item(key = "co${c.id}") { ContactRow(vm, c, detail?.summary?.id == c.id) } }
+                        }
+                    }
+                }
+            }
+        },
+        right = { m -> ContactDetailPanel(vm, m, ice) },
+    )
+}
+
+@Composable
+private fun ContactRow(vm: LauncherViewModel, c: ContactSummary, selected: Boolean, ice: Boolean = false) {
+    val t = LocalTerm.current
+    val shape = RoundedCornerShape(18.dp)
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(shape)
+            .background(if (selected) t.selection else t.panelAlt)
+            .border(1.dp, if (ice) t.err.copy(alpha = 0.5f) else t.border, shape)
+            .clickable { vm.selectContact(c) }.padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Avatar(c.name, 40.dp, nameColor(c.name))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            T(c.name, weight = FontWeight.SemiBold, size = 15.sp, maxLines = 1)
+            T(c.company ?: c.phone ?: c.email ?: "", color = t.dim, size = 13.sp, maxLines = 1)
+        }
+        val phone = c.phone
+        val email = c.email
+        if (phone != null) {
+            RoundGlyph("☏") { vm.dial(phone) }
+            RoundGlyph("✉") { vm.sms(phone) }
+        }
+        if (email != null) RoundGlyph("@") { vm.email(email) }
+    }
+}
+
+@Composable
+private fun RoundGlyph(glyph: String, onClick: () -> Unit) {
+    val t = LocalTerm.current
+    Box(
+        Modifier.padding(start = 6.dp).size(36.dp).clip(CircleShape).background(t.chip).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { T(glyph, size = 15.sp) }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ContactDetailPanel(vm: LauncherViewModel, modifier: Modifier, ice: Set<Long>) {
+    val t = LocalTerm.current
+    val d by vm.selectedContact.collectAsStateWithLifecycle()
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    Panel(modifier) {
+        val detail = d
+        if (detail == null) { Empty("select a contact"); return@Panel }
+        val s = detail.summary
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Avatar(s.name, 96.dp, nameColor(s.name))
+                Spacer(Modifier.width(20.dp))
+                Column {
+                    T(s.name, size = 28.sp, weight = FontWeight.Bold, maxLines = 2)
+                    detail.company?.let { T(it + (detail.jobTitle?.let { j -> " · $j" } ?: ""), color = t.dim, size = 15.sp) }
+                    if (s.id in ice) { Spacer(Modifier.height(6.dp)); Chip("In case of emergency", t.err) }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                detail.phones.firstOrNull()?.let { p ->
+                    TButton("☏ call") { vm.dial(p) }
+                    TButton("✉ message") { vm.sms(p) }
+                }
+                detail.emails.firstOrNull()?.let { e -> TButton("@ email") { vm.email(e) } }
+                TButton("share") { vm.start(vm.contactsRepo.shareIntent(s)) }
+                TButton(if (s.id in ice) "remove ICE" else "mark ICE") { vm.prefs.toggleIce(s.id) }
+                TButton("edit", primary = true) { vm.start(vm.contactsRepo.editIntent(s)) }
+            }
+            Spacer(Modifier.height(16.dp))
+            Tabs(listOf("profile", "raw"), tab, { tab = it })
+            Spacer(Modifier.height(12.dp))
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(t.panelAlt)
+                    .border(1.dp, t.border, RoundedCornerShape(16.dp)).padding(18.dp),
+            ) {
+                if (tab == 0) {
+                    T("contact", weight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    if (detail.phones.isNotEmpty()) KV("phone", detail.phones.joinToString("\n"))
+                    if (detail.emails.isNotEmpty()) KV("email", detail.emails.joinToString("\n"))
+                    detail.company?.let { KV("company", it) }
+                    detail.birthday?.let { KV("birthday", it) }
+                    if (detail.addresses.isNotEmpty()) KV("address", detail.addresses.joinToString("\n"))
+                    detail.note?.let { KV("note", it) }
+                    KV("saved in", if (detail.accounts.isEmpty()) "only on this phone" else detail.accounts.joinToString(" + "))
+                } else {
+                    T("$ cat ${s.lookupKey.take(16)}.vcf", color = t.accent)
+                    Spacer(Modifier.height(6.dp))
+                    val lines = buildList {
+                        add("BEGIN:VCARD"); add("FN:${s.name}")
+                        detail.phones.forEach { add("TEL:$it") }
+                        detail.emails.forEach { add("EMAIL:$it") }
+                        detail.company?.let { add("ORG:$it") }
+                        detail.birthday?.let { add("BDAY:$it") }
+                        detail.addresses.forEach { add("ADR:$it") }
+                        add("END:VCARD")
+                    }
+                    lines.forEach { T(it, size = 13.sp, color = t.fg) }
+                }
+            }
+        }
+    }
+}
+
+// ───────────────────────── photos ─────────────────────────
+
+@Composable
+fun PhotosScreen(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val photos by vm.photos.collectAsStateWithLifecycle()
+    val perms by vm.perms.collectAsStateWithLifecycle()
+    Panel(Modifier.fillMaxSize(), title = "photos", trailing = { T("${photos.size} recent", color = t.dim, size = 12.sp) }) {
+        if (perms["photos"] != true) { Empty("photo access denied", "grant") { vm.requestPermission("photos") }; return@Panel }
+        if (photos.isEmpty()) { Empty("no photos found"); return@Panel }
+        LazyVerticalGrid(columns = GridCells.Adaptive(150.dp), modifier = Modifier.fillMaxSize()) {
+            items(photos.size, key = { photos[it].id }) { i ->
+                val p = photos[i]
+                Box(
+                    Modifier.padding(4.dp).aspectRatio(1f).clip(RoundedCornerShape(14.dp))
+                        .clickable { vm.start(Intent(Intent.ACTION_VIEW).setDataAndType(p.uri, "image/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)) },
+                ) {
+                    AsyncBitmap(p.id, Modifier.fillMaxSize()) { vm.deviceRepo.thumbnail(p) }
+                    val day = Fmt.dayLabel(p.dateMs)
+                    if (i == 0 || Fmt.dayLabel(photos[i - 1].dateMs) != day) {
+                        Box(Modifier.padding(6.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            T(day, color = Color.White, size = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ───────────────────────── health / vitals ─────────────────────────
+
+@Composable
+fun HealthScreen(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val steps by vm.steps.collectAsStateWithLifecycle()
+    val goal by vm.prefs.stepGoal.collectAsStateWithLifecycle()
+    val vitals by vm.vitals.collectAsStateWithLifecycle()
+    val fold by vm.fold.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.vitals.value = vm.deviceRepo.vitals() }
+    Adaptive(
+        leftFraction = 0.5f,
+        left = { m ->
+            Panel(m, title = "activity") {
+                val s = steps.steps
+                when {
+                    !steps.available -> Empty("no step counter sensor")
+                    !steps.permitted -> Empty("physical activity permission denied", "grant") { vm.requestPermission("activity") }
+                    else -> {
+                        T("%,d".format(s ?: 0), size = 56.sp, weight = FontWeight.Bold, color = t.accent)
+                        T("steps today · goal %,d".format(goal), color = t.dim)
+                        Spacer(Modifier.height(14.dp))
+                        T("[${Fmt.bar((s ?: 0).toFloat() / goal, 24)}] ${((s ?: 0) * 100 / goal.coerceAtLeast(1))}%", color = t.accent)
+                        Spacer(Modifier.height(10.dp))
+                        T("≈ %.1f km walked".format((s ?: 0) * 0.00076), color = t.fg)
+                        Spacer(Modifier.height(18.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(6000, 8000, 10000, 12000).forEach { g -> TButton(g.toString(), primary = g == goal) { vm.prefs.setStepGoal(g) } }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                T("Counted on-device from the step sensor since the first reading today. Sleep and heart data live in your health app.", color = t.dim, size = 12.sp)
+            }
+        },
+        right = { m ->
+            Panel(m, title = "htop", trailing = { T("↻", color = t.accent, size = 18.sp, modifier = Modifier.clickable { vm.vitals.value = vm.deviceRepo.vitals() }) }) {
+                val v = vitals
+                if (v == null) { Empty("reading…"); return@Panel }
+                VitalBar("battery", v.battery / 100f, "${v.battery}%${if (v.charging) " ⚡" else ""}", if (v.battery < 20) t.err else t.accent)
+                VitalBar("storage", (1 - v.storageFreeGb / v.storageTotalGb).toFloat(), "${Fmt.gb(v.storageTotalGb - v.storageFreeGb)}/${Fmt.gb(v.storageTotalGb)}", t.accent2)
+                VitalBar("memory", (1 - v.ramAvailGb / v.ramTotalGb).toFloat(), "${Fmt.gb(v.ramTotalGb - v.ramAvailGb)}/${Fmt.gb(v.ramTotalGb)}", t.accent3)
+                Divider()
+                KV("temp", "${v.tempC}°C")
+                KV("uptime", Fmt.duration(v.uptimeMs))
+                KV("posture", fold.label + (fold.hinge?.let { " · hinge ${it.width()}×${it.height()}px" } ?: ""))
+                KV("build", "foldterm ${BuildConfig.VERSION_NAME}")
+            }
+        },
+    )
+}
+
+@Composable
+private fun VitalBar(label: String, frac: Float, value: String, color: Color) {
+    val t = LocalTerm.current
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        T(label, color = t.dim, modifier = Modifier.width(80.dp))
+        T("[", color = t.dim)
+        T(Fmt.bar(frac, 18), color = color, maxLines = 1)
+        T("]", color = t.dim)
+        Spacer(Modifier.width(10.dp))
+        T(value, maxLines = 1)
+    }
+}
+
+// ───────────────────────── news ─────────────────────────
+
+@Composable
+fun NewsScreen(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val news by vm.news.collectAsStateWithLifecycle()
+    val status by vm.newsStatus.collectAsStateWithLifecycle()
+    val now by vm.now.collectAsStateWithLifecycle()
+    var source by rememberSaveable { mutableStateOf<String?>(null) }
+    val sources = remember(news) { news.map { it.source }.distinct() }
+    val shown = news.filter { source == null || it.source == source }
+    Panel(Modifier.fillMaxSize(), title = "news", trailing = { T(status, color = t.dim, size = 12.sp) }) {
+        if (sources.size > 1) {
+            Tabs(listOf("all") + sources.map { it.take(18) }, if (source == null) 0 else sources.indexOf(source) + 1, { i ->
+                source = if (i == 0) null else sources[i - 1]
+            })
+            Spacer(Modifier.height(10.dp))
+        }
+        if (shown.isEmpty()) { Empty(status.ifBlank { "no headlines" }, "refresh") { vm.reloadNews() }; return@Panel }
+        LazyColumn(Modifier.fillMaxSize()) {
+            items(shown.size, key = { shown[it].link + it }) { i ->
+                val n = shown[i]
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { if (n.link.isNotBlank()) vm.openUrl(n.link) }
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                ) {
+                    T((i + 1).toString().padStart(2, '0'), color = t.dim, modifier = Modifier.width(36.dp))
+                    Column(Modifier.weight(1f)) {
+                        T(n.title, size = 16.sp, weight = FontWeight.SemiBold, maxLines = 3)
+                        T("${n.source}${n.published?.let { " · ${Fmt.ago(it, now)}" } ?: ""}", color = t.accent3, size = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ───────────────────────── settings ─────────────────────────
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SettingsScreen(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val theme by vm.prefs.theme.collectAsStateWithLifecycle()
+    val perms by vm.perms.collectAsStateWithLifecycle()
+    val access by vm.notifAccess.collectAsStateWithLifecycle()
+    val isHome by vm.isDefaultHome.collectAsStateWithLifecycle()
+    val fahrenheit by vm.prefs.fahrenheit.collectAsStateWithLifecycle()
+    val feedsPref by vm.prefs.feeds.collectAsStateWithLifecycle()
+    val namePref by vm.prefs.userName.collectAsStateWithLifecycle()
+    val locPref by vm.prefs.manualLocation.collectAsStateWithLifecycle()
+    var feeds by remember(feedsPref) { mutableStateOf(feedsPref) }
+    var name by remember(namePref) { mutableStateOf(namePref) }
+    var loc by remember(locPref) { mutableStateOf(locPref) }
+    val fold = LocalFold.current
+
+    Adaptive(
+        leftFraction = 0.5f,
+        left = { m ->
+            Panel(m, title = "system") {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    T("theme", weight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Themes.all.forEach { th ->
+                            Row(
+                                Modifier.clip(RoundedCornerShape(50)).background(th.bg)
+                                    .border(2.dp, if (th.name == theme) th.accent else th.border, RoundedCornerShape(50))
+                                    .clickable { vm.prefs.setTheme(th.name) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(Modifier.size(12.dp).clip(CircleShape).background(th.accent))
+                                Spacer(Modifier.width(8.dp))
+                                T(th.name, color = th.fg, size = 13.sp)
+                            }
+                        }
+                    }
+                    Divider()
+                    T("permissions", weight = FontWeight.Bold)
+                    perms.forEach { (k, v) ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            T(k, modifier = Modifier.width(110.dp))
+                            T(if (v) "granted" else "denied", color = if (v) t.ok else t.err, modifier = Modifier.weight(1f))
+                            if (!v) TButton("grant") { vm.requestPermission(k) }
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        T("notifs", modifier = Modifier.width(110.dp))
+                        T(if (access) "granted" else "denied", color = if (access) t.ok else t.err, modifier = Modifier.weight(1f))
+                        TButton(if (access) "manage" else "grant") { vm.openNotificationAccess() }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        T("home app", modifier = Modifier.width(110.dp))
+                        T(if (isHome) "foldterm" else "other", color = if (isHome) t.ok else t.warn, modifier = Modifier.weight(1f))
+                        if (!isHome) TButton("set default", primary = true) { vm.requestDefaultHome() }
+                    }
+                    Divider()
+                    T("device", weight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TButton("android settings") { vm.execShell("settings") }
+                        TButton("wifi") { vm.execShell("settings wifi") }
+                        TButton("display") { vm.execShell("settings display") }
+                        TButton("wallpaper & home") { vm.execShell("settings home") }
+                        TButton("reset dock") { vm.prefs.setDock(null) }
+                        TButton("reload data") { vm.execShell("reload") }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    KV("posture", fold.label)
+                    KV("version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                }
+            }
+        },
+        right = { m ->
+            Panel(m, title = "~/.foldtermrc") {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    T("name", color = t.dim)
+                    Field(name, { name = it }, "used in the greeting", Modifier.fillMaxWidth(), onDone = { vm.prefs.setUserName(name.trim()) })
+                    Spacer(Modifier.height(12.dp))
+                    T("weather units", color = t.dim)
+                    Spacer(Modifier.height(4.dp))
+                    Tabs(listOf("°C", "°F"), if (fahrenheit) 1 else 0, { vm.prefs.setFahrenheit(it == 1); vm.reloadWeather() })
+                    Spacer(Modifier.height(12.dp))
+                    T("location override (lat,lon — blank uses device location)", color = t.dim)
+                    Field(loc, { loc = it }, "e.g. 39.74,-104.99", Modifier.fillMaxWidth(), onDone = { vm.prefs.setManualLocation(loc.trim()); vm.reloadWeather() })
+                    Spacer(Modifier.height(12.dp))
+                    T("news feeds (one RSS/Atom url per line)", color = t.dim)
+                    Field(feeds, { feeds = it }, "https://…", Modifier.fillMaxWidth().height(140.dp), singleLine = false)
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TButton("save", primary = true) {
+                            vm.prefs.setUserName(name.trim())
+                            vm.prefs.setManualLocation(loc.trim())
+                            vm.prefs.setFeeds(feeds.trim())
+                            vm.reloadNews(); vm.reloadWeather()
+                            vm.out("~/.foldtermrc saved", dev.foldterm.launcher.shell.LineKind.OK)
+                        }
+                        TButton("defaults") { feeds = dev.foldterm.launcher.data.Prefs.DEFAULT_FEEDS }
+                    }
+                }
+            }
+        },
+    )
+}

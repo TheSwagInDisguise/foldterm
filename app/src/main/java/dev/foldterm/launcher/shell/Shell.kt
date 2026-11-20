@@ -1,0 +1,327 @@
+package dev.foldterm.launcher.shell
+
+import android.content.Intent
+import android.provider.Settings
+import dev.foldterm.launcher.BuildConfig
+import dev.foldterm.launcher.LauncherViewModel
+import dev.foldterm.launcher.Section
+import dev.foldterm.launcher.data.AppEntry
+import dev.foldterm.launcher.data.ContactSummary
+import dev.foldterm.launcher.data.NowPlayingStore
+import dev.foldterm.launcher.ui.Fmt
+import dev.foldterm.launcher.ui.Themes
+
+enum class LineKind { CMD, OUT, DIM, OK, ERR, ACCENT }
+
+data class Line(val text: String, val kind: LineKind)
+
+enum class SuggestionKind { COMMAND, APP, CONTACT, SECTION, WEB }
+
+data class Suggestion(
+    val kind: SuggestionKind,
+    val label: String,
+    val detail: String,
+    val app: AppEntry? = null,
+    val run: () -> Unit,
+)
+
+/**
+ * A tiny command interpreter behind the global prompt. Anything that is not a command
+ * falls through to fuzzy app/contact/section matching, then to a web search.
+ */
+class Shell(private val vm: LauncherViewModel) {
+
+    private class Cmd(
+        val name: String,
+        val usage: String,
+        val help: String,
+        val aliases: Set<String> = emptySet(),
+        val run: (args: List<String>, rest: String) -> Unit,
+    )
+
+    private val commands: List<Cmd> by lazy { buildCommands() }
+
+    private var invokedAs = ""
+
+    fun commandNames(): List<String> = commands.map { it.name }
+
+    fun execute(raw: String) {
+        val line = raw.trim()
+        if (line.isEmpty()) return
+        vm.out("❯ $line", LineKind.CMD)
+        val parts = line.split(Regex("\\s+"))
+        val name = parts[0].lowercase()
+        val rest = line.substring(parts[0].length).trim()
+        val cmd = commands.firstOrNull { it.name == name || name in it.aliases }
+        if (cmd != null) {
+            invokedAs = name
+            runCatching { cmd.run(parts.drop(1), rest) }
+                .onFailure { vm.out("${cmd.name}: ${it.message ?: it.javaClass.simpleName}", LineKind.ERR) }
+            return
+        }
+        val best = suggest(line).firstOrNull { it.kind != SuggestionKind.COMMAND }
+        if (best != null && best.kind != SuggestionKind.WEB) {
+            vm.out("→ ${best.label}", LineKind.DIM)
+            best.run()
+        } else {
+            vm.out("$name: not a command — searching the web", LineKind.DIM)
+            vm.webSearch(line)
+        }
+    }
+
+    // ───────────────────────── suggestions ─────────────────────────
+
+    fun suggest(input: String, limit: Int = 8): List<Suggestion> {
+        val q = input.trim()
+        if (q.isEmpty()) return emptyList()
+        val first = q.substringBefore(' ').lowercase()
+        val arg = q.substringAfter(' ', "").trim()
+        val out = mutableListOf<Suggestion>()
+
+        // argument completion for a few commands
+        if (arg.isNotEmpty() || q.endsWith(" ")) {
+            when (first) {
+                "open", "launch", "run", "info", "uninstall" -> return rankApps(arg).take(limit).map { app ->
+                    Suggestion(SuggestionKind.APP, "$first ${app.label}", app.packageName, app) { execute("$first ${app.label}") }
+                }
+                "call", "sms", "text", "email", "mail" -> if (first != "mail" || arg.isNotEmpty()) {
+                    return rankContacts(arg).take(limit).map { c ->
+                        Suggestion(SuggestionKind.CONTACT, "$first ${c.name}", c.phone ?: c.email ?: "") { execute("$first ${c.name}") }
+                    }
+                }
+                "cd", "go" -> return Section.entries.filter { it.id.startsWith(arg.lowercase()) || it.title.lowercase().startsWith(arg.lowercase()) }
+                    .map { s -> Suggestion(SuggestionKind.SECTION, "cd ${s.id}", s.title) { vm.go(s); vm.shellOpen.value = false } }
+                "theme" -> return Themes.names.filter { it.startsWith(arg.lowercase()) }
+                    .map { t -> Suggestion(SuggestionKind.COMMAND, "theme $t", "switch theme") { execute("theme $t") } }
+            }
+        }
+
+        commands.filter { it.name.startsWith(first) && arg.isEmpty() }.take(3).forEach { c ->
+            out += Suggestion(SuggestionKind.COMMAND, c.usage, c.help) { vm.input.value = "${c.name} " }
+        }
+        Section.entries.filter { score(it.title, q) > 0 }.forEach { s ->
+            out += Suggestion(SuggestionKind.SECTION, "~/${s.id}", "go to ${s.title}") { vm.go(s); vm.shellOpen.value = false; vm.input.value = "" }
+        }
+        rankApps(q).take(5).forEach { app ->
+            out += Suggestion(SuggestionKind.APP, app.label, if (app.isWork) "work profile" else app.packageName, app) { vm.launch(app) }
+        }
+        rankContacts(q).take(3).forEach { c ->
+            out += Suggestion(SuggestionKind.CONTACT, c.name, c.phone ?: c.email ?: c.company ?: "contact") {
+                vm.go(Section.PEOPLE); vm.selectContact(c); vm.shellOpen.value = false; vm.input.value = ""
+            }
+        }
+        out += Suggestion(SuggestionKind.WEB, "search \"$q\"", "web") { vm.webSearch(q); vm.shellOpen.value = false; vm.input.value = "" }
+        // apps first when the query clearly names one
+        return out.sortedBy {
+            when (it.kind) {
+                SuggestionKind.APP -> if (score(it.label, q) >= 80) 0 else 2
+                SuggestionKind.COMMAND -> 1
+                SuggestionKind.SECTION -> 1
+                SuggestionKind.CONTACT -> 3
+                SuggestionKind.WEB -> 9
+            }
+        }.take(limit)
+    }
+
+    private fun rankApps(q: String): List<AppEntry> =
+        if (q.isBlank()) vm.apps.value.take(8)
+        else vm.apps.value.map { it to score(it.label, q) }.filter { it.second > 0 }
+            .sortedByDescending { it.second }.map { it.first }
+
+    private fun rankContacts(q: String): List<ContactSummary> =
+        if (q.isBlank()) vm.contacts.value.filter { it.starred }.take(8)
+        else vm.contacts.value.map { it to score(it.name, q) }.filter { it.second > 0 }
+            .sortedByDescending { it.second }.map { it.first }
+
+    /** 100 exact, 90 prefix, 70 word-prefix, 50 substring, 20 subsequence, 0 none. */
+    private fun score(text: String, query: String): Int {
+        val t = text.lowercase()
+        val q = query.lowercase().trim()
+        if (q.isEmpty()) return 0
+        if (t == q) return 100
+        if (t.startsWith(q)) return 90
+        if (t.split(' ', '-', '.', '_').any { it.startsWith(q) }) return 70
+        if (t.contains(q)) return 50
+        var i = 0
+        for (ch in t) if (i < q.length && ch == q[i]) i++
+        return if (i == q.length && q.length >= 2) 20 else 0
+    }
+
+    private fun findApp(name: String): AppEntry? = rankApps(name).firstOrNull()
+
+    private fun findContact(name: String): ContactSummary? = rankContacts(name).firstOrNull()
+
+    // ───────────────────────── commands ─────────────────────────
+
+    private fun buildCommands(): List<Cmd> = listOf(
+        Cmd("help", "help", "list commands", setOf("?", "man")) { _, _ ->
+            vm.out("commands:", LineKind.ACCENT)
+            commands.forEach { vm.out("  ${it.usage.padEnd(24)} ${it.help}") }
+            vm.out("anything else: fuzzy-matches apps, contacts and sections, then searches the web.", LineKind.DIM)
+        },
+        Cmd("open", "open <app>", "launch an app", setOf("launch", "run")) { _, rest ->
+            val app = findApp(rest) ?: error("no app matching '$rest'")
+            vm.out("launching ${app.label}", LineKind.OK); vm.launch(app)
+        },
+        Cmd("apps", "apps [filter]", "list installed apps", setOf("ls")) { _, rest ->
+            val list = if (rest.isBlank()) vm.apps.value else rankApps(rest)
+            list.forEach { vm.out("  ${it.label.padEnd(28)} ${it.packageName}${if (it.isWork) "  [work]" else ""}") }
+            vm.out("${list.size} apps", LineKind.DIM)
+        },
+        Cmd("cd", "cd <section>", "switch pane (home, mail, cal…)", setOf("go")) { _, rest ->
+            val s = Section.find(rest) ?: error("no such section: $rest")
+            vm.go(s); vm.shellOpen.value = false
+        },
+        Cmd("call", "call <name|number>", "dial a contact") { _, rest ->
+            val number = if (rest.any { it.isDigit() } && rest.none { it.isLetter() }) rest
+            else findContact(rest)?.phone ?: error("no phone number for '$rest'")
+            vm.dial(number)
+        },
+        Cmd("sms", "sms <name|number>", "text a contact", setOf("text")) { _, rest ->
+            val number = if (rest.any { it.isDigit() } && rest.none { it.isLetter() }) rest
+            else findContact(rest)?.phone ?: error("no phone number for '$rest'")
+            vm.sms(number)
+        },
+        Cmd("email", "email <name|address>", "compose an email") { _, rest ->
+            val addr = if ('@' in rest || rest.isBlank()) rest else findContact(rest)?.email ?: error("no email for '$rest'")
+            vm.email(addr)
+        },
+        Cmd("cal", "cal [days]", "print upcoming events", setOf("agenda")) { args, _ ->
+            val days = args.firstOrNull()?.toIntOrNull() ?: 1
+            val end = Fmt.addDays(Fmt.startOfDay(System.currentTimeMillis()), days)
+            val list = vm.events.value.filter { it.end >= System.currentTimeMillis() && it.begin < end }
+            if (list.isEmpty()) vm.out(if (vm.perms.value["calendar"] == true) "nothing scheduled" else "calendar permission needed — run `grant`", LineKind.DIM)
+            var lastDay = ""
+            list.forEach { e ->
+                val d = Fmt.dayLabel(e.begin)
+                if (d != lastDay) { vm.out(d, LineKind.ACCENT); lastDay = d }
+                val time = if (e.allDay) "all-day" else Fmt.time(e.begin)
+                vm.out("  ${time.padEnd(9)} ${e.title}${if (e.location.isNotBlank()) "  @ ${e.location}" else ""}")
+            }
+        },
+        Cmd("new", "new <event|contact|email>", "create something") { args, _ ->
+            when (args.firstOrNull()) {
+                "event" -> vm.newEvent()
+                "contact" -> vm.start(vm.contactsRepo.newIntent())
+                "email", "mail" -> vm.email("")
+                else -> error("usage: new <event|contact|email>")
+            }
+        },
+        Cmd("todo", "todo [add|done|rm] …", "manage tasks", setOf("task", "tasks")) { args, rest ->
+            when (args.firstOrNull()) {
+                null, "ls", "list" -> {
+                    val list = vm.tasks.value
+                    if (list.isEmpty()) vm.out("no tasks — `todo add buy milk`", LineKind.DIM)
+                    list.forEachIndexed { i, t -> vm.out("  ${i + 1}. [${if (t.done) "x" else " "}] ${t.text}", if (t.done) LineKind.DIM else LineKind.OUT) }
+                }
+                "add" -> { vm.addTask(rest.removePrefix("add").trim()); vm.out("added", LineKind.OK) }
+                "done", "x" -> {
+                    val i = args.getOrNull(1)?.toIntOrNull()?.minus(1) ?: error("usage: todo done <n>")
+                    vm.toggleTask(vm.tasks.value.getOrNull(i)?.id ?: error("no task #${i + 1}")); vm.out("toggled #${i + 1}", LineKind.OK)
+                }
+                "rm", "del" -> {
+                    val i = args.getOrNull(1)?.toIntOrNull()?.minus(1) ?: error("usage: todo rm <n>")
+                    vm.removeTask(vm.tasks.value.getOrNull(i)?.id ?: error("no task #${i + 1}")); vm.out("removed #${i + 1}", LineKind.OK)
+                }
+                else -> { vm.addTask(rest); vm.out("added", LineKind.OK) }
+            }
+        },
+        Cmd("weather", "weather", "current conditions", setOf("wttr")) { _, _ ->
+            val w = vm.weather.value
+            if (w == null) { vm.out(vm.weatherStatus.value.ifBlank { "no data yet" }, LineKind.DIM); vm.reloadWeather(); return@Cmd }
+            vm.out("${w.glyph}  ${w.temp.toInt()}°${w.unit} ${w.description}${w.place?.let { "  ($it)" } ?: ""}", LineKind.ACCENT)
+            vm.out("   high ${w.high.toInt()}° / low ${w.low.toInt()}°")
+            vm.out(if (w.rainInHours == null) "   no rain in the next 12h" else "   rain likely in ~${w.rainInHours}h")
+        },
+        Cmd("news", "news [n]", "latest headlines") { args, _ ->
+            val n = args.firstOrNull()?.toIntOrNull() ?: 8
+            val items = vm.news.value.take(n)
+            if (items.isEmpty()) { vm.out(vm.newsStatus.value.ifBlank { "no stories yet" }, LineKind.DIM); vm.reloadNews() }
+            items.forEachIndexed { i, it -> vm.out("  ${(i + 1).toString().padStart(2)}. ${it.title}  — ${it.source}") }
+        },
+        Cmd("notifs", "notifs", "recent notifications", setOf("n", "inbox")) { _, _ ->
+            if (!vm.notifAccess.value) { vm.out("notification access is off — run `access`", LineKind.ERR); return@Cmd }
+            vm.notifications.value.filter { !it.removed }.take(15).forEach {
+                vm.out("  ${Fmt.ago(it.time).padStart(4)}  ${it.app}: ${it.title} — ${it.text.take(60)}")
+            }
+        },
+        Cmd("play", "play | pause | next | prev", "media controls", setOf("pause", "next", "prev", "skip")) { _, _ ->
+            // the alias that was typed decides the action
+            when (invokedAs) {
+                "pause" -> NowPlayingStore.pause()
+                "next", "skip" -> NowPlayingStore.next()
+                "prev" -> NowPlayingStore.previous()
+                else -> NowPlayingStore.play()
+            }
+            if (vm.nowPlaying.value == null) vm.out("no active media session${if (!vm.notifAccess.value) " (needs `access`)" else ""}", LineKind.DIM)
+        },
+        Cmd("theme", "theme <name>", "phosphor | amber | pastel | paper") { args, _ ->
+            val t = args.firstOrNull()?.lowercase()
+            if (t == null || t !in Themes.names) { vm.out("themes: ${Themes.names.joinToString(", ")} (current: ${vm.prefs.theme.value})"); return@Cmd }
+            vm.prefs.setTheme(t); vm.out("theme → $t", LineKind.OK)
+        },
+        Cmd("grant", "grant", "request runtime permissions", setOf("perms")) { _, _ ->
+            vm.perms.value.forEach { (k, v) -> vm.out("  ${k.padEnd(10)} ${if (v) "granted" else "denied"}", if (v) LineKind.OK else LineKind.ERR) }
+            vm.requestAllPermissions()
+        },
+        Cmd("access", "access", "enable notification access") { _, _ -> vm.openNotificationAccess() },
+        Cmd("default", "default", "make foldterm the home app") { _, _ -> vm.requestDefaultHome() },
+        Cmd("settings", "settings [wifi|bt|display|battery|apps|sound]", "system settings", setOf("set")) { args, _ ->
+            val action = when (args.firstOrNull()) {
+                "wifi" -> Settings.ACTION_WIFI_SETTINGS
+                "bt", "bluetooth" -> Settings.ACTION_BLUETOOTH_SETTINGS
+                "display" -> Settings.ACTION_DISPLAY_SETTINGS
+                "battery" -> Intent.ACTION_POWER_USAGE_SUMMARY
+                "apps" -> Settings.ACTION_APPLICATION_SETTINGS
+                "sound" -> Settings.ACTION_SOUND_SETTINGS
+                "home" -> Settings.ACTION_HOME_SETTINGS
+                null -> Settings.ACTION_SETTINGS
+                else -> error("unknown settings page")
+            }
+            vm.start(Intent(action))
+        },
+        Cmd("info", "info <app>", "app info page") { _, rest ->
+            val app = findApp(rest) ?: error("no app matching '$rest'")
+            vm.appsRepo.appInfo(app)
+        },
+        Cmd("uninstall", "uninstall <app>", "remove an app", setOf("rm")) { _, rest ->
+            val app = findApp(rest) ?: error("no app matching '$rest'")
+            vm.start(vm.appsRepo.uninstallIntent(app))
+        },
+        Cmd("dock", "dock [add|rm <app>|reset]", "edit the dock") { args, rest ->
+            val name = rest.substringAfter(' ', "").trim()
+            when (args.firstOrNull()) {
+                "add" -> { val a = findApp(name) ?: error("no app '$name'"); vm.pinToDock(a); vm.out("pinned ${a.label}", LineKind.OK) }
+                "rm" -> { val a = findApp(name) ?: error("no app '$name'"); vm.unpinFromDock(a); vm.out("unpinned ${a.label}", LineKind.OK) }
+                "reset" -> { vm.prefs.setDock(null); vm.out("dock reset", LineKind.OK) }
+                else -> vm.dockApps().forEach { vm.out("  ${it.label}") }
+            }
+        },
+        Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
+        Cmd("date", "date", "date and time") { _, _ ->
+            vm.out("${Fmt.longDate(System.currentTimeMillis())}  ${Fmt.time(System.currentTimeMillis())}")
+        },
+        Cmd("uptime", "uptime", "device vitals", setOf("top", "htop", "battery")) { _, _ ->
+            val v = vm.deviceRepo.vitals()
+            vm.out("  battery  ${v.battery}%${if (v.charging) " (charging)" else ""}  ${v.tempC}°C")
+            vm.out("  storage  ${Fmt.gb(v.storageFreeGb)} free of ${Fmt.gb(v.storageTotalGb)}")
+            vm.out("  memory   ${Fmt.gb(v.ramAvailGb)} free of ${Fmt.gb(v.ramTotalGb)}")
+            vm.out("  uptime   ${Fmt.duration(v.uptimeMs)}")
+        },
+        Cmd("fold", "fold", "hinge / posture info") { _, _ ->
+            val f = vm.fold.value
+            vm.out("posture: ${f.label}${f.hinge?.let { "  hinge=${it.toShortString()} ${if (f.vertical) "vertical" else "horizontal"}" } ?: ""}")
+        },
+        Cmd("whoami", "whoami", "who you are") { _, _ ->
+            vm.out(vm.prefs.userName.value.ifBlank { "user (set a name in settings)" })
+        },
+        Cmd("echo", "echo <text>", "print text") { _, rest -> vm.out(rest) },
+        Cmd("reload", "reload", "refresh all data", setOf("sync", "r")) { _, _ ->
+            vm.loadApps(); vm.refresh(force = true); vm.out("reloading…", LineKind.DIM)
+        },
+        Cmd("clear", "clear", "clear the scrollback", setOf("cls")) { _, _ -> vm.clearLog() },
+        Cmd("version", "version", "build info", setOf("about")) { _, _ ->
+            vm.out("foldterm ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        },
+    )
+}

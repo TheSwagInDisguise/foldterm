@@ -1,0 +1,3 @@
+-dontwarn androidx.window.extensions.**
+-dontwarn androidx.window.sidecar.**
+-keep class dev.foldterm.launcher.data.NotifListener { *; }
