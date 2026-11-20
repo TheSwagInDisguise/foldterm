@@ -274,6 +274,16 @@ class Prefs(context: Context) {
         return last
     }
 
+    /** Cached USD exchange rates and when they were fetched. */
+    fun cachedRates(): Pair<Long, Map<String, Double>>? = runCatching {
+        val o = JSONObject(sp.getString("fxRates", null) ?: return null)
+        val r = o.getJSONObject("rates")
+        o.getLong("at") to r.keys().asSequence().associateWith { r.getDouble(it) }
+    }.getOrNull()
+    fun saveRates(rates: Map<String, Double>) {
+        sp.edit().putString("fxRates", JSONObject().put("at", System.currentTimeMillis()).put("rates", JSONObject(rates as Map<*, *>)).toString()).apply()
+    }
+
     /** True exactly once, on the very first launch. */
     fun consumeFirstRun(): Boolean {
         if (sp.getBoolean("seenFirstRun", false)) return false

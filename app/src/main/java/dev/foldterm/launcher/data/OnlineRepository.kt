@@ -123,6 +123,13 @@ class OnlineRepository(private val ctx: Context) {
         )
     }
 
+    /** Exchange rates against USD from open.er-api.com (free, no key). */
+    fun usdRates(): Map<String, Double> {
+        val json = JSONObject(get("https://open.er-api.com/v6/latest/USD"))
+        val r = json.getJSONObject("rates")
+        return r.keys().asSequence().associateWith { r.getDouble(it) }
+    }
+
     fun news(feeds: List<String>): List<NewsItem> =
         feeds.flatMap { url -> runCatching { parseFeed(url, get(url)) }.getOrDefault(emptyList()) }
             .sortedByDescending { it.published ?: 0L }

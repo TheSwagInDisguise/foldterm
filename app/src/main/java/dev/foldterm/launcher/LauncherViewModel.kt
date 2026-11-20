@@ -828,6 +828,30 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }.sortedBy { it.second }
     }
 
+    // ───────────────────────── currency ─────────────────────────
+
+    /** Converts with cached rates when fresh (12h); null if no usable cache. */
+    fun convertCached(amount: Double, from: String, to: String): Double? {
+        val (at, rates) = prefs.cachedRates() ?: return null
+        if (System.currentTimeMillis() - at > 12 * 3_600_000L) return null
+        val a = rates[from] ?: return null
+        val b = rates[to] ?: return null
+        return amount / a * b
+    }
+
+    fun convertCurrency(amount: Double, from: String, to: String) {
+        convertCached(amount, from, to)?.let { out("= %,.2f %s".format(it, to), LineKind.ACCENT); return }
+        out("fetching exchange rates…", LineKind.DIM)
+        viewModelScope.launch {
+            val rates = withContext(Dispatchers.IO) { runCatching { online.usdRates() }.getOrNull() }
+            if (rates == null) { out("couldn't fetch rates (offline?)", LineKind.ERR); return@launch }
+            prefs.saveRates(rates)
+            val a = rates[from]; val b = rates[to]
+            if (a == null || b == null) out("unknown currency: ${if (a == null) from else to}", LineKind.ERR)
+            else out("= %,.2f %s".format(amount / a * b, to), LineKind.ACCENT)
+        }
+    }
+
     fun clearAllNotifications() {
         runCatching { NotifListener.instance?.cancelAllNotifications() }
         NotificationStore.items.update { list -> list.map { it.copy(removed = true) } }

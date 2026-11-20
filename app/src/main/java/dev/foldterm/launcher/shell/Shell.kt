@@ -51,6 +51,8 @@ class Shell(private val vm: LauncherViewModel) {
         val line = raw.trim()
         if (line.isEmpty()) return
         vm.out("❯ $line", LineKind.CMD)
+        Units.convert(line)?.let { vm.out("= $it", LineKind.ACCENT); return }
+        Units.currencyQuery(line)?.let { (n, a, b) -> vm.convertCurrency(n, a, b); return }
         if (Calc.isExpression(line)) {
             runCatching { vm.out("= ${Calc.format(Calc.eval(line))}", LineKind.ACCENT) }
                 .onFailure { vm.out("calc: ${it.message}", LineKind.ERR) }
@@ -100,6 +102,13 @@ class Shell(private val vm: LauncherViewModel) {
     fun suggest(input: String, limit: Int = 8): List<Suggestion> {
         val q = input.trim()
         if (q.isEmpty()) return emptyList()
+        Units.convert(q)?.let { r ->
+            return listOf(Suggestion(SuggestionKind.COMMAND, "= $r", "conversion · ⏎ to keep") { execute(q) })
+        }
+        Units.currencyQuery(q)?.let { (n, a, b) ->
+            val v = vm.convertCached(n, a, b)
+            return listOf(Suggestion(SuggestionKind.COMMAND, if (v != null) "= %,.2f %s".format(v, b) else "convert $a → $b", if (v != null) "cached rates" else "⏎ fetches today's rates") { execute(q) })
+        }
         if (Calc.isExpression(q)) {
             val res = runCatching { Calc.format(Calc.eval(q)) }.getOrNull()
             if (res != null) return listOf(
@@ -575,6 +584,18 @@ class Shell(private val vm: LauncherViewModel) {
             }
         },
         Cmd("lock", "lock", "lock the screen") { _, _ -> vm.lockScreen() },
+        Cmd("time", "time [place]", "time here or anywhere, e.g. time tokyo", setOf("tz", "clock")) { _, rest ->
+            val place = rest.removePrefix("in ").trim()
+            if (place.isEmpty()) { vm.out("${Fmt.longDate(System.currentTimeMillis())}  ${Fmt.time(System.currentTimeMillis())}"); return@Cmd }
+            val (id, z) = Units.timeIn(place) ?: error("don't know a time zone for '$place'")
+            val diffH = (z.offset.totalSeconds - java.time.ZonedDateTime.now().offset.totalSeconds) / 3600.0
+            vm.out("${Units.formatTime(z, Fmt.is24)}  ${id.substringAfterLast('/').replace('_', ' ')}  (${if (diffH >= 0) "+" else ""}${Calc.format(diffH)}h)", LineKind.ACCENT)
+        },
+        Cmd("conv", "conv <n> <unit> in <unit>", "convert units or currency, e.g. 5 km in mi", setOf("convert")) { _, rest ->
+            Units.convert(rest)?.let { vm.out("= $it", LineKind.ACCENT); return@Cmd }
+            Units.currencyQuery(rest)?.let { (n, a, b) -> vm.convertCurrency(n, a, b); return@Cmd }
+            error("try: 5 km in mi · 350 f to c · 100 usd in aud")
+        },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->
