@@ -261,6 +261,7 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
             ) { AppDrawer(vm) }
 
             RenameDialog(vm)
+            FolderDialog(vm)
 
             AnimatedVisibility(visible = shellOpen, enter = fadeIn(tween(120)), exit = fadeOut(tween(100))) {
                 val topPad = with(density) { (promptBottom - rootTop).coerceAtLeast(0).toDp() }
@@ -280,6 +281,41 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
             }
         }
     }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun FolderDialog(vm: LauncherViewModel) {
+    val target by vm.folderTarget.collectAsStateWithLifecycle()
+    val app = target ?: return
+    val t = LocalTerm.current
+    val folders by vm.prefs.folders.collectAsStateWithLifecycle()
+    var name by remember(app.uniqueKey) { mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { vm.folderTarget.value = null },
+        containerColor = t.panel,
+        title = { T("folders for ${app.label}", weight = FontWeight.Bold) },
+        text = {
+            Column {
+                if (folders.isEmpty()) T("no folders yet — make one below", color = t.dim, size = 12.sp)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    folders.keys.sorted().forEach { f ->
+                        DrawerChip((if (app.key in folders.getValue(f)) "✓ " else "") + f, app.key in folders.getValue(f)) { vm.prefs.toggleInFolder(f, app.key) }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Field(name, { name = it }, "new folder name", Modifier.fillMaxWidth(), onDone = {
+                    if (name.isNotBlank()) { vm.prefs.toggleInFolder(name.trim().lowercase(), app.key); name = "" }
+                })
+            }
+        },
+        confirmButton = {
+            TButton("done", primary = true) {
+                if (name.isNotBlank()) vm.prefs.toggleInFolder(name.trim().lowercase(), app.key)
+                vm.folderTarget.value = null
+            }
+        },
+    )
 }
 
 @Composable
@@ -801,9 +837,14 @@ private fun AppDrawer(vm: LauncherViewModel) {
     val sort by vm.prefs.drawerSort.collectAsStateWithLifecycle()
     val usage by vm.prefs.usage.collectAsStateWithLifecycle()
     var category by remember { mutableStateOf<Int?>(null) }
-    val shown = remember(apps, filter, sort, category, usage) {
+    val folders by vm.prefs.folders.collectAsStateWithLifecycle()
+    // a folder requested by `folder <name>` applies once, when the drawer opens
+    var folder by remember { mutableStateOf(vm.drawerFolder.value) }
+    LaunchedEffect(Unit) { vm.drawerFolder.value = null }
+    val shown = remember(apps, filter, sort, category, usage, folder, folders) {
+        val inFolder = folder?.let { folders[it] }
         val f = apps.filter { filter.isBlank() || it.label.contains(filter, true) || it.packageName.contains(filter, true) }
-            .filter { category == null || it.category == category }
+            .filter { if (inFolder != null) it.key in inFolder else category == null || it.category == category }
         when (sort) {
             "used" -> f.sortedByDescending { usage[it.key] ?: 0 }
             "new" -> f.sortedByDescending { it.installedAt }
@@ -865,8 +906,9 @@ private fun AppDrawer(vm: LauncherViewModel) {
                     DrawerChip(label, sort == id) { vm.prefs.setDrawerSort(id) }
                 }
                 item { T("│", color = t.border, modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)) }
-                item { DrawerChip("all", category == null) { category = null } }
-                items(categories) { c -> DrawerChip(CATEGORY_NAMES[c] ?: "?", category == c) { category = if (category == c) null else c } }
+                item { DrawerChip("all", category == null && folder == null) { category = null; folder = null } }
+                items(folders.keys.sorted()) { f -> DrawerChip("▸ $f", folder == f) { folder = if (folder == f) null else f; category = null } }
+                items(categories) { c -> DrawerChip(CATEGORY_NAMES[c] ?: "?", category == c && folder == null) { category = if (category == c) null else c; folder = null } }
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxSize()) {
@@ -908,6 +950,7 @@ private fun AppDrawer(vm: LauncherViewModel) {
                             DropdownMenuItem(text = { T("pin to dock") }, onClick = { menu = false; vm.pinToDock(app) })
                             DropdownMenuItem(text = { T("app info") }, onClick = { menu = false; vm.appsRepo.appInfo(app) })
                             DropdownMenuItem(text = { T("rename") }, onClick = { menu = false; vm.renameTarget.value = app })
+                            DropdownMenuItem(text = { T("folders…") }, onClick = { menu = false; vm.folderTarget.value = app })
                             DropdownMenuItem(text = { T("hide") }, onClick = { menu = false; vm.setHidden(app, true) })
                             DropdownMenuItem(text = { T("uninstall") }, onClick = { menu = false; vm.start(vm.appsRepo.uninstallIntent(app)) })
                         }
@@ -915,7 +958,7 @@ private fun AppDrawer(vm: LauncherViewModel) {
                 }
             }
             // A–Z jump strip
-            if (sort == "az" && filter.isBlank() && category == null && shown.size > 30) {
+            if (sort == "az" && filter.isBlank() && category == null && folder == null && shown.size > 30) {
                 val letters = remember(shown) {
                     shown.mapIndexedNotNull { i, a -> a.label.firstOrNull()?.uppercaseChar()?.let { c -> (if (c.isLetter()) c else '#') to i } }
                         .distinctBy { it.first }

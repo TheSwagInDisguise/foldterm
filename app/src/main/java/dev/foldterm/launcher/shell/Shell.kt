@@ -645,6 +645,16 @@ class Shell(private val vm: LauncherViewModel) {
                 }
             }
         },
+        Cmd("folder", "folder [name]", "open the drawer at a folder; no name lists them", setOf("folders")) { _, rest ->
+            val f = vm.prefs.folders.value
+            if (rest.isBlank()) {
+                if (f.isEmpty()) vm.out("no folders — long-press an app in the drawer → folders…", LineKind.DIM)
+                f.toSortedMap().forEach { (k, v) -> vm.out("  ▸ ${k.padEnd(12)} ${v.size} apps") }
+                return@Cmd
+            }
+            val name = f.keys.firstOrNull { it.equals(rest, true) } ?: f.keys.firstOrNull { it.startsWith(rest.lowercase()) } ?: error("no folder '$rest'")
+            vm.drawerFolder.value = name; vm.drawerOpen.value = true; vm.shellOpen.value = false
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

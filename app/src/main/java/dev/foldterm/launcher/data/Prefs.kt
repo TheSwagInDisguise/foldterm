@@ -345,6 +345,27 @@ class Prefs(context: Context) {
         sp.edit().putString("newsSaved", a.toString()).apply()
     }
 
+    /** Drawer folders: name → app keys. */
+    val folders = MutableStateFlow(
+        runCatching {
+            val o = JSONObject(sp.getString("folders", "{}")!!)
+            o.keys().asSequence().associateWith { k -> o.getJSONArray(k).let { a -> (0 until a.length()).map { a.getString(it) }.toSet() } }
+        }.getOrDefault(emptyMap()),
+    )
+    fun setFolders(v: Map<String, Set<String>>) {
+        val clean = v.filterValues { it.isNotEmpty() }
+        folders.value = clean
+        val o = JSONObject()
+        clean.forEach { (k, keys) -> o.put(k, JSONArray(keys.toList())) }
+        sp.edit().putString("folders", o.toString()).apply()
+    }
+    fun toggleInFolder(folder: String, key: String) {
+        val cur = folders.value.toMutableMap()
+        val set = (cur[folder] ?: emptySet()).toMutableSet().apply { if (!add(key)) remove(key) }
+        cur[folder] = set
+        setFolders(cur)
+    }
+
     /** Text size multiplier on top of the system font scale. */
     val textScale = MutableStateFlow(sp.getFloat("textScale", 1f))
     fun setTextScale(v: Float) { textScale.value = v; sp.edit().putFloat("textScale", v).apply() }

@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.31.0" to listOf("drawer folders: long-press an app → folders…; folder chips filter the drawer", "`folder <name>` opens the drawer at that folder"),
     "0.30.0" to listOf("text size: Settings → text size", "chain commands with ;  e.g. alias work=dnd on; split slack | chrome", "snooze notifications from Alerts, Mail and Chat"),
     "0.29.0" to listOf("notes: preview mode renders headings, bullets and tappable - [ ] checklists", "world clocks card: `clocks add tokyo`, then enable it in home layout or cover screen"),
     "0.28.0" to listOf("↑/↓ pick a prompt suggestion, ⏎ runs it", "choose your web search engine in Settings", "`brief`: a rundown of your day (also each morning)"),
@@ -162,6 +163,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val log = MutableStateFlow<List<Line>>(emptyList())
     val history = MutableStateFlow(prefs.loadHistory())
     val renameTarget = MutableStateFlow<AppEntry?>(null)
+    val folderTarget = MutableStateFlow<AppEntry?>(null)
+    /** Folder the drawer opens filtered to (from `folder <name>`). */
+    val drawerFolder = MutableStateFlow<String?>(null)
 
     fun rename(app: AppEntry, label: String?) {
         prefs.setLabel(app.key, label)
