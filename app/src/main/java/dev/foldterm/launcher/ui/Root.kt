@@ -742,6 +742,7 @@ private fun CompactTabs(vm: LauncherViewModel, current: Section) {
 
 // ───────────────────────── dock ─────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Dock(vm: LauncherViewModel, modifier: Modifier) {
     val t = LocalTerm.current
@@ -764,7 +765,11 @@ private fun Dock(vm: LauncherViewModel, modifier: Modifier) {
             horizontalArrangement = Arrangement.spacedBy(gap),
         ) {
             Box(
-                Modifier.size(tile).clip(RoundedCornerShape(16.dp)).background(t.button).clickable { vm.drawerOpen.value = !vm.drawerOpen.value },
+                Modifier.size(tile).clip(RoundedCornerShape(16.dp)).background(t.button)
+                    .combinedClickable(
+                        onClick = { vm.drawerOpen.value = !vm.drawerOpen.value },
+                        onLongClick = { vm.drawerOpen.value = false; vm.shellOpen.value = true },
+                    ),
                 contentAlignment = Alignment.Center,
             ) { T("⠿", color = t.onButton, size = 26.sp, weight = FontWeight.Bold) }
             dock.take(fit).forEach { app -> DockIcon(vm, app, tile) }

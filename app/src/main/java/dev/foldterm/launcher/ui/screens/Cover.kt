@@ -168,6 +168,11 @@ internal fun ClockCard(vm: LauncherViewModel) {
             }
         }
         T("${Fmt.longDate(now)}${vitals?.let { " · ${it.battery}%${if (it.charging) "⚡" else ""}" } ?: ""}", color = t.dim, size = 14.sp)
+        val events by vm.events.collectAsStateWithLifecycle()
+        val next = events.firstOrNull { !it.allDay && it.end > now && it.begin < now + 12 * 3_600_000L }
+        if (next != null) {
+            T("❯ ${next.title} ${if (next.begin <= now) "now" else Fmt.until(next.begin, now)}", color = t.accent, size = 14.sp, maxLines = 1)
+        }
     }
 }
 
