@@ -1034,6 +1034,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
                         TButton("display") { vm.execShell("settings display") }
                         TButton("wallpaper & home") { vm.execShell("settings home") }
                         TButton("reset dock") { vm.prefs.setDock(null) }
+                        TButton("screen saver") { vm.execShell("screensaver") }
                         TButton("reload data") { vm.execShell("reload") }
                     }
                     Spacer(Modifier.height(12.dp))

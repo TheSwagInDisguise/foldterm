@@ -122,6 +122,18 @@
             </intent-filter>
         </receiver>
 
+        <!-- Screen saver (Display → Screen saver → FoldTerm clock). -->
+        <service
+            android:name=".TerminalDream"
+            android:exported="true"
+            android:label="FoldTerm clock"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
         <!-- Invisible trampoline that puts two apps into split screen (see SplitActivity.kt). -->
         <activity
             android:name=".SplitActivity"

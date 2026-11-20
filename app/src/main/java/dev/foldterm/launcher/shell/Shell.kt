@@ -708,6 +708,10 @@ class Shell(private val vm: LauncherViewModel) {
             val ips = vm.ipAddresses()
             if (ips.isEmpty()) vm.out("no network", LineKind.DIM) else ips.forEach { vm.out("  $it") }
         },
+        Cmd("screensaver", "screensaver", "set up the FoldTerm clock screen saver", setOf("dream")) { _, _ ->
+            vm.out("choose “FoldTerm clock” in the screen saver list", LineKind.DIM)
+            vm.start(Intent(android.provider.Settings.ACTION_DREAM_SETTINGS))
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
