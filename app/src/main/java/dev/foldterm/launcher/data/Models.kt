@@ -82,7 +82,23 @@ data class NowPlaying(
     val pkg: String,
     val isPlaying: Boolean,
     val art: Bitmap?,
-)
+    val album: String = "",
+    val durationMs: Long = 0L,
+    /** Position reported by the app at [positionAt] (SystemClock.elapsedRealtime). */
+    val positionMs: Long = 0L,
+    val positionAt: Long = 0L,
+    val speed: Float = 1f,
+    val canSeek: Boolean = false,
+) {
+    /** Current position, extrapolated from the last report while playing. */
+    fun positionNow(elapsedRealtime: Long): Long {
+        if (!isPlaying || positionAt == 0L) return positionMs
+        val p = positionMs + ((elapsedRealtime - positionAt) * speed).toLong()
+        return if (durationMs > 0) p.coerceAtMost(durationMs) else p
+    }
+}
+
+data class MediaSessionInfo(val pkg: String, val title: String, val isPlaying: Boolean)
 
 data class Weather(
     val temp: Double,

@@ -109,6 +109,7 @@ import dev.foldterm.launcher.ui.screens.MessagesScreen
 import dev.foldterm.launcher.ui.screens.NewsScreen
 import dev.foldterm.launcher.ui.screens.NotesScreen
 import dev.foldterm.launcher.ui.screens.WeatherScreen
+import dev.foldterm.launcher.ui.screens.MediaScreen
 import dev.foldterm.launcher.ui.screens.WidgetsScreen
 import androidx.compose.ui.input.key.isAltPressed
 import dev.foldterm.launcher.ui.screens.PeopleScreen
@@ -286,6 +287,7 @@ private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Mo
             Section.HEALTH -> HealthScreen(vm)
             Section.NEWS -> NewsScreen(vm)
             Section.WEATHER -> WeatherScreen(vm)
+            Section.MEDIA -> MediaScreen(vm)
             Section.NOTES -> NotesScreen(vm)
             Section.WIDGETS -> WidgetsScreen(vm)
             Section.SETTINGS -> SettingsScreen(vm)
@@ -636,17 +638,22 @@ private fun Dock(vm: LauncherViewModel, modifier: Modifier) {
                 val cur = np
                 Row(
                     Modifier.width(230.dp).clip(RoundedCornerShape(18.dp)).background(t.chip)
-                        .clickable { if (cur != null) NowPlayingStore.toggle() else if (!access) vm.openNotificationAccess() }
+                        .clickable { if (cur != null) vm.go(Section.MEDIA) else if (!access) vm.openNotificationAccess() }
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     val art = cur?.art
                     if (art != null) {
-                        Image(art.asImageBitmap(), null, Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
+                        Image(
+                            art.asImageBitmap(), null,
+                            Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).clickable { NowPlayingStore.toggle() },
+                            contentScale = ContentScale.Crop,
+                        )
                     } else {
                         Box(
                             Modifier.size(42.dp).clip(RoundedCornerShape(12.dp))
-                                .background(Brush.linearGradient(listOf(t.accent, t.accent2, t.accent3))),
+                                .background(Brush.linearGradient(listOf(t.accent, t.accent2, t.accent3)))
+                                .clickable(enabled = cur != null) { NowPlayingStore.toggle() },
                             contentAlignment = Alignment.Center,
                         ) { T(if (cur?.isPlaying == true) "▮▮" else "▶", color = t.onButton, size = 14.sp) }
                     }

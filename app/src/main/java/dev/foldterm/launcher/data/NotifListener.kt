@@ -134,40 +134,76 @@ object NotificationStore {
 
 object NowPlayingStore {
     val state = MutableStateFlow<NowPlaying?>(null)
+    /** Every app with an active media session, playing first. */
+    val sessions = MutableStateFlow<List<MediaSessionInfo>>(emptyList())
+    private var controllers: List<MediaController> = emptyList()
     private var controller: MediaController? = null
+    /** Package the user picked in the media pane; sticks until that session goes away. */
+    private var pinnedPkg: String? = null
     private val handler = Handler(Looper.getMainLooper())
     private val callback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
         override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
         override fun onSessionDestroyed() {
-            controller = null
+            controllers = controllers.filter { runCatching { it.playbackState; true }.getOrDefault(false) }
+            if (controller != null && controller !in controllers) controller = null
             publish()
         }
     }
 
     fun setControllers(list: List<MediaController>) {
-        val pick = list.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING } ?: list.firstOrNull()
-        if (pick?.sessionToken != controller?.sessionToken) {
-            runCatching { controller?.unregisterCallback(callback) }
-            controller = pick
-            runCatching { pick?.registerCallback(callback, handler) }
-        }
+        controllers.forEach { runCatching { it.unregisterCallback(callback) } }
+        controllers = list
+        list.forEach { runCatching { it.registerCallback(callback, handler) } }
+        controller = pickController()
+        publish()
+    }
+
+    private fun pickController(): MediaController? =
+        controllers.firstOrNull { it.packageName == pinnedPkg }
+            ?: controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+            ?: controller?.takeIf { it in controllers }
+            ?: controllers.firstOrNull()
+
+    fun select(pkg: String) {
+        pinnedPkg = pkg
+        controller = pickController()
         publish()
     }
 
     private fun publish() {
+        sessions.value = controllers.map { c ->
+            val md = c.metadata
+            MediaSessionInfo(
+                pkg = c.packageName,
+                title = md?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: md?.description?.title?.toString() ?: "",
+                isPlaying = c.playbackState?.state == PlaybackState.STATE_PLAYING,
+            )
+        }.sortedByDescending { it.isPlaying }
+        // follow whatever starts playing unless the user pinned a session
+        if (pinnedPkg == null || controllers.none { it.packageName == pinnedPkg }) {
+            pinnedPkg = null
+            controller = pickController()
+        }
         val c = controller
         if (c == null) { state.value = null; return }
         val md = c.metadata
         val title = md?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: md?.description?.title?.toString() ?: ""
         if (title.isBlank()) { state.value = null; return }
+        val ps = c.playbackState
         state.value = NowPlaying(
             title = title,
             artist = md?.getString(MediaMetadata.METADATA_KEY_ARTIST)
                 ?: md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST) ?: "",
             pkg = c.packageName,
-            isPlaying = c.playbackState?.state == PlaybackState.STATE_PLAYING,
+            isPlaying = ps?.state == PlaybackState.STATE_PLAYING,
             art = md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART),
+            album = md?.getString(MediaMetadata.METADATA_KEY_ALBUM) ?: "",
+            durationMs = md?.getLong(MediaMetadata.METADATA_KEY_DURATION)?.takeIf { it > 0 } ?: 0L,
+            positionMs = ps?.position?.coerceAtLeast(0) ?: 0L,
+            positionAt = ps?.lastPositionUpdateTime ?: 0L,
+            speed = ps?.playbackSpeed ?: 1f,
+            canSeek = (ps?.actions ?: 0L) and PlaybackState.ACTION_SEEK_TO != 0L,
         )
     }
 
@@ -179,5 +215,6 @@ object NowPlayingStore {
     fun pause() { controller?.transportControls?.pause() }
     fun next() { controller?.transportControls?.skipToNext() }
     fun previous() { controller?.transportControls?.skipToPrevious() }
+    fun seekTo(ms: Long) { controller?.transportControls?.seekTo(ms.coerceAtLeast(0)) }
     fun sessionPackage(): String? = controller?.packageName
 }

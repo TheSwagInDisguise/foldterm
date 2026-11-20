@@ -5,7 +5,9 @@ import android.annotation.SuppressLint
 import android.appwidget.AppWidgetProviderInfo
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import kotlin.math.roundToInt
 import dev.foldterm.launcher.data.Note
 import dev.foldterm.launcher.data.WidgetSlot
 import dev.foldterm.launcher.data.Widgets
@@ -617,6 +619,38 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             am.setStreamVolume(AudioManager.STREAM_MUSIC, (max * percent.coerceIn(0, 100) / 100f).toInt(), AudioManager.FLAG_SHOW_UI)
         }.onSuccess { out("media volume → ${percent.coerceIn(0, 100)}%", LineKind.OK) }
             .onFailure { out("volume: ${it.message}", LineKind.ERR) }
+    }
+
+    /** Media volume as 0..1. */
+    fun volumeFraction(): Float {
+        val am = ctx.getSystemService(AudioManager::class.java) ?: return 0f
+        return am.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+    }
+
+    fun setVolumeFraction(f: Float) {
+        val am = ctx.getSystemService(AudioManager::class.java) ?: return
+        val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        runCatching { am.setStreamVolume(AudioManager.STREAM_MUSIC, (f.coerceIn(0f, 1f) * max).roundToInt(), 0) }
+    }
+
+    /** Where audio is going: the first headphone/Bluetooth/USB output, else the phone speaker. */
+    fun audioOutputs(): List<String> {
+        val am = ctx.getSystemService(AudioManager::class.java) ?: return emptyList()
+        val external = setOf(
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_WIRED_HEADSET,
+            AudioDeviceInfo.TYPE_USB_HEADSET, AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_HDMI,
+        ) + (if (Build.VERSION.SDK_INT >= 31) setOf(AudioDeviceInfo.TYPE_BLE_HEADSET, AudioDeviceInfo.TYPE_BLE_SPEAKER) else emptySet())
+        val names = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            .filter { it.type in external }
+            .map { it.productName?.toString()?.takeIf { n -> n.isNotBlank() } ?: "headphones" }
+            .distinct()
+        return names.ifEmpty { listOf("phone speaker") }
+    }
+
+    fun appLabelForPackage(pkg: String): String = allApps.value.firstOrNull { it.packageName == pkg }?.label ?: pkg.substringAfterLast('.')
+
+    fun openPackage(pkg: String) {
+        apps.value.firstOrNull { it.packageName == pkg && !it.isWork }?.let { launch(it) }
     }
 
     fun copy(text: String) {
