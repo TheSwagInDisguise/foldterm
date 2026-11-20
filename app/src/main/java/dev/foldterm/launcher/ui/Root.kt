@@ -112,6 +112,7 @@ import dev.foldterm.launcher.ui.screens.HomeScreen
 import dev.foldterm.launcher.ui.screens.MessagesScreen
 import dev.foldterm.launcher.ui.screens.NewsScreen
 import dev.foldterm.launcher.ui.screens.NotesScreen
+import dev.foldterm.launcher.ui.screens.GamesScreen
 import dev.foldterm.launcher.ui.screens.WeatherScreen
 import dev.foldterm.launcher.ui.screens.MediaScreen
 import dev.foldterm.launcher.ui.screens.NotificationCentre
@@ -405,6 +406,7 @@ private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Mo
             Section.USAGE -> UsageScreen(vm)
             Section.FOCUS -> FocusScreen(vm)
             Section.NOTES -> NotesScreen(vm)
+            Section.GAMES -> GamesScreen(vm)
             Section.WIDGETS -> WidgetsScreen(vm)
             Section.SETTINGS -> SettingsScreen(vm)
         }

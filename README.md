@@ -11,7 +11,9 @@ Agenda, inbox, people, weather and news in hinge-aware panes, with a command lin
 ![Android 10+](https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-Compose-7F52FF?logo=kotlin&logoColor=white)
 
-[**Download the latest APK →**](https://github.com/TheSwagInDisguise/foldterm/releases/latest)
+[**Download the latest APK →**](https://github.com/TheSwagInDisguise/foldterm/releases/latest) · [**Website**](https://theswagindisguise.github.io/foldterm/)
+
+<img src="docs/screenshots/home-phosphor.png" alt="FoldTerm home screen on an unfolded Pixel Fold" width="720">
 
 </div>
 
@@ -19,6 +21,7 @@ Agenda, inbox, people, weather and news in hinge-aware panes, with a command lin
 
 ## Contents
 
+- [Screenshots](#screenshots)
 - [Highlights](#highlights)
 - [Panes](#panes)
 - [Home, dock & drawer](#home-dock--drawer)
@@ -30,6 +33,25 @@ Agenda, inbox, people, weather and news in hinge-aware panes, with a command lin
 - [Building & releasing](#building--releasing)
 
 ---
+
+## Screenshots
+
+Captured on a Pixel Fold emulator with FoldTerm's built-in demo data (see [`scripts/screenshots.sh`](scripts/screenshots.sh)).
+
+| | |
+|---|---|
+| <img src="docs/screenshots/calendar.png" alt="Calendar"> **Calendar** | <img src="docs/screenshots/alerts.png" alt="Alerts"> **Alerts** |
+| <img src="docs/screenshots/media.png" alt="Media"> **Media** | <img src="docs/screenshots/weather.png" alt="Weather"> **Weather** |
+| <img src="docs/screenshots/home-pastel.png" alt="Home, pastel theme"> **Home · pastel** | <img src="docs/screenshots/drawer.png" alt="App drawer"> **App drawer** |
+| <img src="docs/screenshots/prompt.png" alt="The prompt"> **The prompt** | <img src="docs/screenshots/notes.png" alt="Notes, amber theme"> **Notes · amber** |
+
+**Cover screen**
+
+<p>
+<img src="docs/screenshots/cover-home.png" alt="Cover screen cards" width="240">
+<img src="docs/screenshots/cover-alerts.png" alt="Cover screen alerts" width="240">
+<img src="docs/screenshots/cover-pastel.png" alt="Cover screen, pastel theme" width="240">
+</p>
 
 ## Highlights
 

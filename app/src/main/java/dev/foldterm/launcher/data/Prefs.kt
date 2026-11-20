@@ -395,6 +395,9 @@ class Prefs(context: Context) {
     val pinnedNote = MutableStateFlow(sp.getLong("pinnedNote", 0L))
     fun setPinnedNote(id: Long) { pinnedNote.value = id; sp.edit().putLong("pinnedNote", id).apply() }
 
+    fun gameBest(key: String): Int = sp.getInt("best_$key", 0)
+    fun setGameBest(key: String, v: Int) { sp.edit().putInt("best_$key", v).apply() }
+
     val keyClicks = MutableStateFlow(sp.getBoolean("keyClicks", false))
     fun setKeyClicks(v: Boolean) { keyClicks.value = v; sp.edit().putBoolean("keyClicks", v).apply() }
 
