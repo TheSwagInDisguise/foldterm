@@ -798,6 +798,20 @@ class Shell(private val vm: LauncherViewModel) {
                 }
             }
         },
+        Cmd("habit", "habit add|done|rm <name>", "daily habits with streaks", setOf("habits")) { args, rest ->
+            val name = rest.substringAfter(' ', "").trim()
+            fun find() = vm.habits.value.map { it to score(it.name, name) }.filter { it.second > 0 }.maxByOrNull { it.second }?.first
+                ?: error("no habit matching '$name'")
+            when (args.firstOrNull()?.lowercase()) {
+                "add" -> { vm.addHabit(name); vm.out("tracking '$name'", LineKind.OK) }
+                "done", "tick", "x" -> { val h = find(); vm.toggleHabit(h.id); vm.out("${h.name} ✓ — streak ${vm.habits.value.first { it.id == h.id }.streak()}", LineKind.OK) }
+                "rm", "remove" -> { val h = find(); vm.removeHabit(h.id); vm.out("removed ${h.name}", LineKind.OK) }
+                else -> {
+                    if (vm.habits.value.isEmpty()) vm.out("no habits — `habit add read`", LineKind.DIM)
+                    vm.habits.value.forEach { h -> vm.out("  ${if (h.doneOn(java.time.LocalDate.now())) "[x]" else "[ ]"} ${h.name.padEnd(20)} 🔥${h.streak()}  best ${h.best()}") }
+                }
+            }
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

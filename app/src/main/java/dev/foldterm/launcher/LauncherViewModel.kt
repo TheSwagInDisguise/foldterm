@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.50.0" to listOf("Habits pane: daily check-ins, streaks and a 30-day rate; habits card for Home and cover", "`habit add read`, `habit done read`, `habits`"),
     "0.49.0" to listOf("agenda rows always show the event title", "status bar icons match FoldTerm's theme"),
     "0.48.0" to listOf("Radio pane: internet radio (SomaFM presets, add your own streams); `radio defcon`, `radio stop`"),
     "0.47.0" to listOf("Games pane: serpent, mines and a typing sprint (`cd games`)"),
@@ -655,6 +656,21 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val iconPacks = dev.foldterm.launcher.data.IconPacks(app)
     val controls = dev.foldterm.launcher.data.Controls(app)
     val radio = dev.foldterm.launcher.data.Radio(app)
+    val habits = MutableStateFlow(prefs.loadHabits())
+
+    fun addHabit(name: String) {
+        if (name.isBlank()) return
+        habits.value = habits.value + dev.foldterm.launcher.data.Habit(System.currentTimeMillis(), name.trim(), emptySet())
+        prefs.saveHabits(habits.value)
+    }
+
+    fun removeHabit(id: Long) { habits.value = habits.value.filterNot { it.id == id }; prefs.saveHabits(habits.value) }
+
+    fun toggleHabit(id: Long, day: java.time.LocalDate = java.time.LocalDate.now()) {
+        val key = day.toString()
+        habits.value = habits.value.map { h -> if (h.id != id) h else h.copy(days = if (key in h.days) h.days - key else h.days + key) }
+        prefs.saveHabits(habits.value)
+    }
     val stations = MutableStateFlow(prefs.loadStations())
 
     fun addStation(s: dev.foldterm.launcher.data.Station) {

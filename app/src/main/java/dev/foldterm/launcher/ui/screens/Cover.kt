@@ -56,6 +56,7 @@ val COVER_CARDS = listOf(
     "clocks" to "world clocks",
     "apps" to "most used apps",
     "actions" to "quick actions",
+    "habits" to "habits",
 )
 
 /** Home for the folded phone: large type, big targets, one column, no nested scrolling. */
@@ -76,6 +77,7 @@ fun CoverHome(vm: LauncherViewModel) {
                 "clocks" -> ClocksCard(vm)
                 "apps" -> AppsCard(vm)
                 "actions" -> QuickActionsCard(vm)
+                "habits" -> HabitsCard(vm)
             }
         }
         if (cards.isEmpty()) T("# no cover cards — choose some in Settings → cover screen", color = LocalTerm.current.dim)

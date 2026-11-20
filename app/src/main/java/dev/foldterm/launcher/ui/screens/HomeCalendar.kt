@@ -101,6 +101,7 @@ val HOME_CARDS = listOf(
     "clocks" to "world clocks",
     "apps" to "most used apps",
     "actions" to "quick actions",
+    "habits" to "habits",
 )
 private val STRETCHY = setOf("agenda", "summary", "widgets", "tasks", "notes")
 
@@ -136,6 +137,7 @@ private fun HomeColumn(vm: LauncherViewModel, cards: List<String>, modifier: Mod
                 "clocks" -> ClocksCard(vm)
                 "apps" -> AppsCard(vm)
                 "actions" -> QuickActionsCard(vm)
+                "habits" -> HabitsCard(vm)
             }
         }
         if (cards.none { it in STRETCHY }) Spacer(Modifier.weight(1f))

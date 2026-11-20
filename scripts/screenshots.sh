@@ -61,6 +61,9 @@ shot drawer          --es section home --ez drawer true
 shot prompt          --es section home --es prompt "maya"
 shot prompt-convert  --es section home --es prompt "100 usd in aud"
 shot settings        --es theme pastel --es section settings
+shot habits          --es theme phosphor --es section habits
+shot games           --es section games
+shot radio           --es theme amber --es section radio
 
 adb emu fold || true
 sleep 6

@@ -123,5 +123,13 @@ fun LauncherViewModel.loadDemo() {
         week = (6 downTo 0).map { d -> UsageDay(day - d * 24 * h, listOf(3, 4, 2, 5, 3, 2, 2)[d] * h + 20 * m * d) },
     )
     steps.value = StepState(available = true, permitted = true, steps = 6_481)
+    val today = java.time.LocalDate.now()
+    fun daysBack(vararg n: Int) = n.map { today.minusDays(it.toLong()).toString() }.toSet()
+    habits.value = listOf(
+        dev.foldterm.launcher.data.Habit(1, "Read 20 pages", daysBack(0, 1, 2, 3, 4, 6, 7, 8)),
+        dev.foldterm.launcher.data.Habit(2, "Walk 8k steps", daysBack(1, 2, 3, 5, 6)),
+        dev.foldterm.launcher.data.Habit(3, "No phone after 10pm", daysBack(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)),
+        dev.foldterm.launcher.data.Habit(4, "Practice piano", daysBack(2, 4)),
+    )
     prefs.setUserName("Alex")
 }

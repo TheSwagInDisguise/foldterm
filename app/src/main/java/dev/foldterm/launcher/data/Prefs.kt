@@ -405,6 +405,20 @@ class Prefs(context: Context) {
         sp.edit().putString("stations", a.toString()).apply()
     }
 
+    fun loadHabits(): List<Habit> = runCatching {
+        val a = JSONArray(sp.getString("habits", "[]"))
+        (0 until a.length()).map { i ->
+            val o = a.getJSONObject(i)
+            val d = o.optJSONArray("days") ?: JSONArray()
+            Habit(o.getLong("id"), o.getString("name"), (0 until d.length()).map { d.getString(it) }.toSet())
+        }
+    }.getOrDefault(emptyList())
+    fun saveHabits(v: List<Habit>) {
+        val a = JSONArray()
+        v.forEach { h -> a.put(JSONObject().put("id", h.id).put("name", h.name).put("days", JSONArray(h.days.sorted().takeLast(400)))) }
+        sp.edit().putString("habits", a.toString()).apply()
+    }
+
     fun gameBest(key: String): Int = sp.getInt("best_$key", 0)
     fun setGameBest(key: String, v: Int) { sp.edit().putInt("best_$key", v).apply() }
 
