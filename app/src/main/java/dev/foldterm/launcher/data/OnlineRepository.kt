@@ -165,6 +165,21 @@ class OnlineRepository(private val ctx: Context) {
         return Triple(s.optString("title", key), s.optString("extract"), url)
     }
 
+    /** Translation via MyMemory (free, no key). [to] is a language code like "es". */
+    fun translate(text: String, to: String, from: String = "en"): String? {
+        val q = java.net.URLEncoder.encode(text, "UTF-8")
+        val j = JSONObject(get("https://api.mymemory.translated.net/get?q=$q&langpair=$from%7C$to"))
+        return j.optJSONObject("responseData")?.optString("translatedText")?.takeIf { it.isNotBlank() && !it.startsWith("PLEASE SELECT") }
+    }
+
+    /** Crypto price and 24h change from CoinGecko (free, no key). */
+    fun cryptoPrice(id: String, vs: String): Pair<Double, Double?>? {
+        val j = JSONObject(get("https://api.coingecko.com/api/v3/simple/price?ids=$id&vs_currencies=$vs&include_24hr_change=true"))
+        val o = j.optJSONObject(id) ?: return null
+        if (!o.has(vs)) return null
+        return o.getDouble(vs) to o.optDouble("${vs}_24h_change").takeIf { !it.isNaN() }
+    }
+
     /** Exchange rates against USD from open.er-api.com (free, no key). */
     fun usdRates(): Map<String, Double> {
         val json = JSONObject(get("https://open.er-api.com/v6/latest/USD"))

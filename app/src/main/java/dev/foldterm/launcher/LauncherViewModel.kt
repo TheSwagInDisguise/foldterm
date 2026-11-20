@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.56.0" to listOf("`translate es good morning`", "`price btc` in your currency", "stopwatch card with laps for Home and cover"),
     "0.55.0" to listOf("Podcasts pane: subscribe to any podcast feed and play episodes (`podcast add <feed url>`)"),
     "0.54.0" to listOf("Share → FoldTerm: links go to the new Links pane, text becomes a note", "`save <url>` from the prompt; links card for Home and cover"),
     "0.53.0" to listOf("countdowns: `countdown add japan trip dec 20`, with a card for Home and the cover screen", "game boards fit the inner screen"),
@@ -1211,6 +1212,43 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    fun translate(to: String, text: String) {
+        out("translating…", LineKind.DIM)
+        viewModelScope.launch {
+            val r = withContext(Dispatchers.IO) {
+                runCatching { online.translate(text, to, if (to == "en") "es" else "en") }.getOrNull()
+            }
+            if (r == null) out("couldn't translate (check the language code, e.g. es, fr, ja)", LineKind.ERR)
+            else { out("$to: $r", LineKind.ACCENT); copy(r) }
+        }
+    }
+
+    fun cryptoPrice(symbol: String) {
+        val ids = mapOf(
+            "btc" to "bitcoin", "eth" to "ethereum", "sol" to "solana", "doge" to "dogecoin", "ada" to "cardano",
+            "xrp" to "ripple", "dot" to "polkadot", "ltc" to "litecoin", "bnb" to "binancecoin", "avax" to "avalanche-2",
+        )
+        val id = ids[symbol.lowercase()] ?: symbol.lowercase()
+        val vs = runCatching { java.util.Currency.getInstance(java.util.Locale.getDefault()).currencyCode.lowercase() }.getOrDefault("usd")
+        viewModelScope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { online.cryptoPrice(id, vs) ?: online.cryptoPrice(id, "usd")?.let { it } }.getOrNull() }
+            if (r == null) { out("no price for '$symbol' (try btc, eth, sol…)", LineKind.ERR); return@launch }
+            val ch = r.second?.let { " (${if (it >= 0) "+" else ""}${"%.2f".format(it)}% 24h)" } ?: ""
+            out("${symbol.uppercase()} ${"%,.2f".format(r.first)} ${vs.uppercase()}$ch", if ((r.second ?: 0.0) >= 0) LineKind.OK else LineKind.ERR)
+        }
+    }
+
+    // stopwatch (in memory; survives leaving the pane, not a restart)
+    val swStart = MutableStateFlow(0L)      // elapsedRealtime when running, 0 when stopped
+    val swAccum = MutableStateFlow(0L)      // time banked from earlier runs
+    val swLaps = MutableStateFlow<List<Long>>(emptyList())
+    fun swElapsed(): Long = swAccum.value + if (swStart.value > 0) android.os.SystemClock.elapsedRealtime() - swStart.value else 0
+    fun swToggle() {
+        if (swStart.value > 0) { swAccum.value = swElapsed(); swStart.value = 0 } else swStart.value = android.os.SystemClock.elapsedRealtime()
+    }
+    fun swLap() { if (swStart.value > 0) swLaps.value = swLaps.value + swElapsed() }
+    fun swReset() { swStart.value = 0; swAccum.value = 0; swLaps.value = emptyList() }
 
     val lastWikiUrl = MutableStateFlow<String?>(null)
 

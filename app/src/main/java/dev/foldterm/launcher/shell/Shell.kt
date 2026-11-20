@@ -859,6 +859,14 @@ class Shell(private val vm: LauncherViewModel) {
             if (args.firstOrNull() == "add") { vm.addPodcast(rest.substringAfter("add").trim()); vm.out("subscribed", LineKind.OK); return@Cmd }
             vm.go(Section.PODCASTS); vm.shellOpen.value = false
         },
+        Cmd("translate", "translate <lang> <text>", "translate, e.g. translate es where is the station", setOf("tr")) { args, rest ->
+            require(args.size >= 2) { "usage: translate es where is the station" }
+            vm.translate(args[0].lowercase(), rest.substringAfter(args[0]).trim())
+        },
+        Cmd("price", "price <btc|eth|sol…>", "crypto price", setOf("crypto")) { args, _ ->
+            require(args.isNotEmpty()) { "usage: price btc" }
+            args.take(5).forEach { vm.cryptoPrice(it) }
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

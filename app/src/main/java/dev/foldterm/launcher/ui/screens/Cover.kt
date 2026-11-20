@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +60,7 @@ val COVER_CARDS = listOf(
     "habits" to "habits",
     "countdowns" to "countdowns",
     "links" to "read later",
+    "stopwatch" to "stopwatch",
 )
 
 /** Home for the folded phone: large type, big targets, one column, no nested scrolling. */
@@ -82,6 +84,7 @@ fun CoverHome(vm: LauncherViewModel) {
                 "habits" -> HabitsCard(vm)
                 "countdowns" -> CountdownsCard(vm)
                 "links" -> LinksCard(vm)
+                "stopwatch" -> StopwatchCard(vm)
             }
         }
         if (cards.isEmpty()) T("# no cover cards — choose some in Settings → cover screen", color = LocalTerm.current.dim)
@@ -375,5 +378,28 @@ internal fun QuickActionsCard(vm: LauncherViewModel) {
                 }
             }
         }
+    }
+}
+
+/** Stopwatch with laps; keeps running while you're in other panes. */
+@Composable
+internal fun StopwatchCard(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val start by vm.swStart.collectAsStateWithLifecycle()
+    val laps by vm.swLaps.collectAsStateWithLifecycle()
+    var tick by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    androidx.compose.runtime.LaunchedEffect(start) { while (start > 0) { tick = android.os.SystemClock.elapsedRealtime(); kotlinx.coroutines.delay(50) } }
+    val ms = vm.swElapsed().also { tick }
+    fun fmt(v: Long) = "%02d:%02d.%02d".format(v / 60000, v / 1000 % 60, v / 10 % 100)
+    Card {
+        Label("stopwatch")
+        T(fmt(ms), size = 40.sp, weight = FontWeight.Bold, color = if (start > 0) t.accent else t.fg)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TButton(if (start > 0) "stop" else "start", primary = true) { vm.swToggle() }
+            TButton("lap", enabled = start > 0) { vm.swLap() }
+            TButton("reset") { vm.swReset() }
+        }
+        laps.takeLast(4).asReversed().forEachIndexed { i, l -> T("lap ${laps.size - i}  ${fmt(l)}", color = t.dim, size = 13.sp) }
     }
 }
