@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.28.0" to listOf("↑/↓ pick a prompt suggestion, ⏎ runs it", "choose your web search engine in Settings", "`brief`: a rundown of your day (also each morning)"),
     "0.27.0" to listOf("People → groups tab shows your contact labels", "News remembers what you've read; ☆ saves stories for later"),
     "0.26.0" to listOf("tasks take a due day and priority: `todo add pay rent fri !`", "overdue tasks turn red and sort first; tap ☆ to star"),
     "0.25.1" to listOf("app shortcuts: long-press an app for its shortcuts; the prompt finds them too (needs FoldTerm as home app)"),
@@ -223,6 +224,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh(force: Boolean = false) {
         controlsTick.value++
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        if (prefs.morningBrief.value && hour in 4..11 && prefs.firstOpenToday()) {
+            viewModelScope.launch { delay(2500); brief(); shellOpen.value = true }
+        }
         if (refreshJob?.isActive == true && !force) return
         loadUsage()
         refreshJob = viewModelScope.launch {
@@ -646,10 +651,42 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun directions(place: String) = start(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=${Uri.encode(place)}")), "no maps app")
     fun openUrl(url: String) = start(Intent(Intent.ACTION_VIEW, Uri.parse(url)), "no browser")
     fun webSearch(q: String) {
-        val i = Intent(Intent.ACTION_WEB_SEARCH).putExtra(android.app.SearchManager.QUERY, q)
-        try { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: ActivityNotFoundException) {
-            openUrl("https://duckduckgo.com/?q=${Uri.encode(q)}")
+        val e = Uri.encode(q)
+        val url = when (prefs.searchEngine.value) {
+            "duckduckgo" -> "https://duckduckgo.com/?q=$e"
+            "google" -> "https://www.google.com/search?q=$e"
+            "brave" -> "https://search.brave.com/search?q=$e"
+            "startpage" -> "https://www.startpage.com/do/search?q=$e"
+            "kagi" -> "https://kagi.com/search?q=$e"
+            else -> null
         }
+        if (url != null) { openUrl(url); return }
+        val i = Intent(Intent.ACTION_WEB_SEARCH).putExtra(android.app.SearchManager.QUERY, q)
+        try { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (ex: ActivityNotFoundException) {
+            openUrl("https://duckduckgo.com/?q=$e")
+        }
+    }
+
+    /** A terminal-style rundown of the day. */
+    fun brief() {
+        val nowMs = System.currentTimeMillis()
+        out("── ${Fmt.greeting(nowMs).lowercase()}${prefs.userName.value.takeIf { it.isNotBlank() }?.let { ", $it" } ?: ""} · ${Fmt.longDate(nowMs)} ──", LineKind.ACCENT)
+        weather.value?.let { w ->
+            out("  ${w.glyph} ${w.temp.toInt()}°, ${w.description.lowercase()}; high ${w.high.toInt()}°${if (w.rainInHours != null) ", rain in ~${w.rainInHours}h" else ", no rain soon"}")
+        }
+        val end = Fmt.addDays(Fmt.startOfDay(nowMs), 1)
+        val today = events.value.filter { it.end > nowMs && it.begin < end }
+        if (today.isEmpty()) out("  ▦ nothing left on the calendar today")
+        else {
+            out("  ▦ ${today.size} event${if (today.size > 1) "s" else ""} left today:")
+            today.take(5).forEach { e -> out("      ${if (e.allDay) "all-day" else Fmt.time(e.begin)}  ${e.title}") }
+        }
+        val open = sortedTasks(tasks.value).filter { !it.done }
+        val overdue = open.count { it.due != null && it.due < Fmt.startOfDay(nowMs) }
+        if (open.isNotEmpty()) out("  ✓ ${open.size} task${if (open.size > 1) "s" else ""}${if (overdue > 0) " ($overdue overdue)" else ""}; next: ${open.first().text}")
+        upcomingBirthdays(7).take(2).forEach { (c, d) -> out("  ✦ ${c.name}'s birthday ${when (d) { 0 -> "is today"; 1 -> "is tomorrow"; else -> "in $d days" }}") }
+        val waiting = NotificationStore.items.value.count { !it.removed && it.kind != dev.foldterm.launcher.data.NotifKind.OTHER && it.pkg !in prefs.mutedApps.value }
+        if (notifAccess.value) out("  @ $waiting message${if (waiting == 1) "" else "s"} waiting")
     }
 
     fun openNotif(n: Notif) {
@@ -1056,8 +1093,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         shellOpen.value = true
         shell.execute(cmd)
     }
+    /** Highlighted suggestion (arrow keys); 0 = the top one. */
+    val selIndex = MutableStateFlow(0)
+
     fun submit() {
         val line = input.value
+        val pick = if (selIndex.value > 0 && line.isNotBlank()) shell.suggest(line).getOrNull(selIndex.value) else null
+        selIndex.value = 0
+        if (pick != null) {
+            history.update { (it.filter { h -> h != line } + line).takeLast(100) }
+            prefs.saveHistory(history.value)
+            input.value = ""
+            pick.run()
+            return
+        }
         input.value = ""
         if (line.isNotBlank()) {
             history.update { (it.filter { h -> h != line } + line).takeLast(100) }

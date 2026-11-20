@@ -619,6 +619,7 @@ class Shell(private val vm: LauncherViewModel) {
             vm.rename(app, name.ifBlank { null })
             vm.out(if (name.isBlank()) "reset ${app.label}" else "${app.label} → $name", LineKind.OK)
         },
+        Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->

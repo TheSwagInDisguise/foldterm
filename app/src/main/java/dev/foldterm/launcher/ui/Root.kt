@@ -450,7 +450,7 @@ private fun Prompt(vm: LauncherViewModel, focus: FocusRequester, modifier: Modif
         Spacer(Modifier.width(12.dp))
         BasicTextField(
             value = text,
-            onValueChange = { vm.input.value = it; vm.shellOpen.value = true; histIdx = -1 },
+            onValueChange = { vm.input.value = it; vm.shellOpen.value = true; histIdx = -1; vm.selIndex.value = 0 },
             singleLine = true,
             textStyle = TextStyle(fontFamily = Mono, fontSize = 16.sp, color = t.fg),
             cursorBrush = SolidColor(t.accent),
@@ -463,13 +463,18 @@ private fun Prompt(vm: LauncherViewModel, focus: FocusRequester, modifier: Modif
                     when (e.key) {
                         Key.Enter, Key.NumPadEnter -> { vm.submit(); true }
                         Key.DirectionUp -> {
-                            if (history.isNotEmpty()) {
+                            if (text.isNotBlank() && vm.selIndex.value > 0) {
+                                vm.selIndex.value--
+                            } else if (history.isNotEmpty()) {
                                 histIdx = if (histIdx < 0) history.lastIndex else (histIdx - 1).coerceAtLeast(0)
                                 vm.input.value = history[histIdx]
                             }; true
                         }
                         Key.DirectionDown -> {
-                            if (histIdx >= 0) {
+                            if (text.isNotBlank() && histIdx < 0) {
+                                val n = vm.shell.suggest(text).size
+                                if (n > 0) vm.selIndex.value = (vm.selIndex.value + 1).coerceAtMost(n - 1)
+                            } else if (histIdx >= 0) {
                                 histIdx++
                                 vm.input.value = if (histIdx > history.lastIndex) { histIdx = -1; "" } else history[histIdx]
                             }; true
@@ -510,6 +515,7 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
     val recentKeys by vm.prefs.recent.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
     val suggestions = remember(text, apps) { vm.shell.suggest(text) }
+    val sel by vm.selIndex.collectAsStateWithLifecycle()
     val shape = RoundedCornerShape(22.dp)
     Column(
         modifier.clip(shape).background(t.panel).border(1.dp, t.accent.copy(alpha = 0.5f), shape)
@@ -554,7 +560,7 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
             suggestions.forEachIndexed { i, s ->
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                        .background(if (i == 0) t.selection else Color.Transparent)
+                        .background(if (i == sel) t.selection else Color.Transparent)
                         .clickable { s.run() }
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -577,9 +583,9 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
                         AppIcon(s.app, 22.dp, iconStyle) { vm.icon(s.app) }
                         Spacer(Modifier.width(10.dp))
                     }
-                    T(s.label, weight = if (i == 0) FontWeight.Bold else FontWeight.Normal, maxLines = 1, modifier = Modifier.weight(1f))
+                    T(s.label, weight = if (i == sel) FontWeight.Bold else FontWeight.Normal, maxLines = 1, modifier = Modifier.weight(1f))
                     T(s.detail, color = t.dim, size = 12.sp, maxLines = 1, modifier = Modifier.widthIn(max = 260.dp))
-                    if (i == 0) T("  ⏎", color = t.accent, size = 12.sp)
+                    if (i == sel) T("  ⏎", color = t.accent, size = 12.sp)
                 }
             }
             Divider()

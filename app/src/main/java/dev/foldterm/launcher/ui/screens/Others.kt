@@ -645,6 +645,8 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val dim by vm.prefs.wallpaperDim.collectAsStateWithLifecycle()
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
+    val engine by vm.prefs.searchEngine.collectAsStateWithLifecycle()
+    val morning by vm.prefs.morningBrief.collectAsStateWithLifecycle()
     val iconPack by vm.prefs.iconPack.collectAsStateWithLifecycle()
     var customTint by remember(iconTint) { mutableStateOf(if (iconTint.startsWith("#")) iconTint else "") }
     val hiddenKeys by vm.prefs.hidden.collectAsStateWithLifecycle()
@@ -1029,6 +1031,23 @@ fun SettingsScreen(vm: LauncherViewModel) {
                         }
                         TButton("defaults") { feeds = dev.foldterm.launcher.data.Prefs.DEFAULT_FEEDS }
                     }
+                    Divider()
+                    T("web search", weight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("system", "duckduckgo", "google", "brave", "startpage", "kagi").forEach { e ->
+                            Box(
+                                Modifier.clip(RoundedCornerShape(50)).background(if (e == engine) t.button else t.chip)
+                                    .clickable { vm.prefs.setSearchEngine(e) }.padding(horizontal = 12.dp, vertical = 6.dp),
+                            ) { T(e, color = if (e == engine) t.onButton else t.dim, size = 12.sp) }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("morning brief", modifier = Modifier.weight(1f))
+                        Tabs(listOf("off", "on"), if (morning) 1 else 0, { vm.prefs.setMorningBrief(it == 1) })
+                    }
+                    T("prints your day the first time you open FoldTerm each morning; `brief` any time", color = t.dim, size = 11.sp)
                     Divider()
                     T("backup", weight = FontWeight.Bold)
                     T("save every setting (themes, layouts, notes, tasks, pairs, aliases…) to a file, or restore one", color = t.dim, size = 12.sp)

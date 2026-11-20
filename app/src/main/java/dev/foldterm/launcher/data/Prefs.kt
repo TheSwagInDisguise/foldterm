@@ -345,6 +345,19 @@ class Prefs(context: Context) {
         sp.edit().putString("newsSaved", a.toString()).apply()
     }
 
+    /** Web search: system, duckduckgo, google, brave, startpage, kagi. */
+    val searchEngine = MutableStateFlow(sp.getString("searchEngine", "system") ?: "system")
+    fun setSearchEngine(v: String) { searchEngine.value = v; sp.edit().putString("searchEngine", v).apply() }
+    val morningBrief = MutableStateFlow(sp.getBoolean("morningBrief", true))
+    fun setMorningBrief(v: Boolean) { morningBrief.value = v; sp.edit().putBoolean("morningBrief", v).apply() }
+    /** True the first time this is asked on a given day. */
+    fun firstOpenToday(): Boolean {
+        val day = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
+        if (sp.getString("briefDay", "") == day) return false
+        sp.edit().putString("briefDay", day).apply()
+        return true
+    }
+
     /** True exactly once, on the very first launch. */
     fun consumeFirstRun(): Boolean {
         if (sp.getBoolean("seenFirstRun", false)) return false
