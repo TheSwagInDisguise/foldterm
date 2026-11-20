@@ -825,6 +825,29 @@ class Shell(private val vm: LauncherViewModel) {
             require(rest.isNotBlank()) { "usage: wiki foldable smartphone" }
             vm.wiki(rest)
         },
+        Cmd("countdown", "countdown [add <name> <date> | rm <name>]", "days until things", setOf("countdowns", "until")) { args, rest ->
+            val body = rest.substringAfter(' ', "").trim()
+            when (args.firstOrNull()?.lowercase()) {
+                "add" -> {
+                    val (name, date) = When.countdown(body) ?: error("try: countdown add japan trip dec 20")
+                    require(name.isNotBlank()) { "give it a name: countdown add japan trip dec 20" }
+                    vm.prefs.setCountdowns(vm.prefs.countdowns.value + "$name|$date")
+                    val days = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), date)
+                    vm.out("$name: $days days (${date})", LineKind.OK)
+                }
+                "rm", "remove" -> {
+                    val hit = vm.prefs.countdowns.value.firstOrNull { it.substringBefore('|').contains(body, true) } ?: error("no countdown matching '$body'")
+                    vm.prefs.setCountdowns(vm.prefs.countdowns.value - hit); vm.out("removed", LineKind.OK)
+                }
+                else -> {
+                    if (vm.prefs.countdowns.value.isEmpty()) vm.out("no countdowns — `countdown add japan trip dec 20`", LineKind.DIM)
+                    vm.prefs.countdowns.value.forEach { c ->
+                        val d = runCatching { java.time.LocalDate.parse(c.substringAfter('|')) }.getOrNull() ?: return@forEach
+                        vm.out("  ${java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), d).toString().padStart(4)} days  ${c.substringBefore('|')}")
+                    }
+                }
+            }
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

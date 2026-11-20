@@ -57,6 +57,7 @@ val COVER_CARDS = listOf(
     "apps" to "most used apps",
     "actions" to "quick actions",
     "habits" to "habits",
+    "countdowns" to "countdowns",
 )
 
 /** Home for the folded phone: large type, big targets, one column, no nested scrolling. */
@@ -78,6 +79,7 @@ fun CoverHome(vm: LauncherViewModel) {
                 "apps" -> AppsCard(vm)
                 "actions" -> QuickActionsCard(vm)
                 "habits" -> HabitsCard(vm)
+                "countdowns" -> CountdownsCard(vm)
             }
         }
         if (cards.isEmpty()) T("# no cover cards — choose some in Settings → cover screen", color = LocalTerm.current.dim)
@@ -103,6 +105,31 @@ private fun Label(text: String, extra: String? = null) {
         if (extra != null) T(" · $extra", color = t.dim, size = 12.sp)
     }
     Spacer(Modifier.height(6.dp))
+}
+
+/** Days until the things you're counting down to. */
+@Composable
+internal fun CountdownsCard(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val list by vm.prefs.countdowns.collectAsStateWithLifecycle()
+    val today = java.time.LocalDate.now()
+    val items = list.mapNotNull { c -> runCatching { c.substringBefore('|') to java.time.LocalDate.parse(c.substringAfter('|')) }.getOrNull() }
+        .filter { !it.second.isBefore(today) }.sortedBy { it.second }
+    Card {
+        Label("countdowns")
+        if (items.isEmpty()) T("Add one with `countdown add japan trip dec 20`.", color = t.dim, size = 13.sp)
+        items.take(5).forEach { (name, date) ->
+            val days = java.time.temporal.ChronoUnit.DAYS.between(today, date)
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    T(name, weight = FontWeight.SemiBold, maxLines = 1)
+                    T(date.format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM yyyy")), color = t.dim, size = 12.sp)
+                }
+                T(if (days == 0L) "today!" else "$days", size = 26.sp, weight = FontWeight.Bold, color = t.accent)
+                if (days > 0) T(" days", color = t.dim, size = 12.sp)
+            }
+        }
+    }
 }
 
 /** Your eight most-launched apps as big tap targets. */

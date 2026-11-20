@@ -65,6 +65,29 @@ object When {
         return Triple(words.joinToString(" "), due, starred)
     }
 
+    private val months = listOf("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+
+    /**
+     * Pulls a date off the end of "japan trip dec 20" / "exam 2027-01-14" / "party 20 dec".
+     * Returns (name, date); dates without a year are the next occurrence.
+     */
+    fun countdown(input: String, today: java.time.LocalDate = java.time.LocalDate.now()): Pair<String, java.time.LocalDate>? {
+        val w = input.trim().split(Regex("\\s+"))
+        if (w.isEmpty()) return null
+        runCatching { java.time.LocalDate.parse(w.last()) }.getOrNull()?.let { return w.dropLast(1).joinToString(" ") to it }
+        if (w.size >= 2) {
+            val a = w[w.size - 2].lowercase(); val b = w.last().lowercase()
+            val (mon, day) = when {
+                months.any { a.startsWith(it) } && b.toIntOrNull() != null -> months.indexOfFirst { a.startsWith(it) } + 1 to b.toInt()
+                months.any { b.startsWith(it) } && a.toIntOrNull() != null -> months.indexOfFirst { b.startsWith(it) } + 1 to a.toInt()
+                else -> return null
+            }
+            val d = runCatching { java.time.LocalDate.of(today.year, mon, day) }.getOrNull() ?: return null
+            return w.dropLast(2).joinToString(" ") to (if (d.isBefore(today)) d.plusYears(1) else d)
+        }
+        return null
+    }
+
     data class Parsed(val begin: Long, val hasTime: Boolean, val title: String)
 
     private val days = listOf("sun", "mon", "tue", "wed", "thu", "fri", "sat")

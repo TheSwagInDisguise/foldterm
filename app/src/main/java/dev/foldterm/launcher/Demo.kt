@@ -139,5 +139,6 @@ fun LauncherViewModel.loadDemo() {
         ex(9, 64.3, "groceries", 8), ex(10, 9.99, "subscriptions music", 10), ex(11, 45.0, "gym pass", 12),
     )
     prefs.setBudget(1200.0)
+    prefs.setCountdowns(listOf("Japan trip|${java.time.LocalDate.now().plusDays(30)}", "Maya's birthday|${java.time.LocalDate.now().plusDays(12)}"))
     prefs.setUserName("Alex")
 }

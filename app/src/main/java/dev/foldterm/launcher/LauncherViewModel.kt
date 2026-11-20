@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.53.0" to listOf("countdowns: `countdown add japan trip dec 20`, with a card for Home and the cover screen", "game boards fit the inner screen"),
     "0.52.0" to listOf("`define <word>` for dictionary definitions", "`wiki <topic>` for a Wikipedia summary (`wiki open` for the article)"),
     "0.51.0" to listOf("Money pane: log spending (`spent 12.50 lunch`), monthly budget, categories and a 14-day chart"),
     "0.50.0" to listOf("Habits pane: daily check-ins, streaks and a 30-day rate; habits card for Home and cover", "`habit add read`, `habit done read`, `habits`"),

@@ -432,6 +432,12 @@ class Prefs(context: Context) {
         sp.edit().putString("expenses", a.toString()).apply()
     }
 
+    /** Countdowns as "name|yyyy-MM-dd". */
+    val countdowns = MutableStateFlow(
+        runCatching { JSONArray(sp.getString("countdowns", "[]")).let { a -> (0 until a.length()).map { a.getString(it) } } }.getOrDefault(emptyList()),
+    )
+    fun setCountdowns(v: List<String>) { countdowns.value = v; sp.edit().putString("countdowns", JSONArray(v).toString()).apply() }
+
     fun gameBest(key: String): Int = sp.getInt("best_$key", 0)
     fun setGameBest(key: String, v: Int) { sp.edit().putInt("best_$key", v).apply() }
 

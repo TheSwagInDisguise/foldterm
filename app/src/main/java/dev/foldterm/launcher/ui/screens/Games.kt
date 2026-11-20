@@ -66,10 +66,13 @@ fun GamesScreen(vm: LauncherViewModel) {
     Panel(Modifier.fillMaxSize(), title = "games") {
         Tabs(listOf("serpent", "mines", "typer"), game, { game = it })
         Spacer(Modifier.height(12.dp))
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        // boards fit the space we actually have: on the wide inner screen height is the limit
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            val serpentSide = minOf(maxWidth, maxHeight - 130.dp).coerceAtLeast(160.dp)
+            val minesWidth = minOf(maxWidth, (maxHeight - 150.dp) * (9f / 11f)).coerceAtLeast(180.dp)
             when (game) {
-                0 -> Serpent(vm)
-                1 -> Mines(vm)
+                0 -> Serpent(vm, serpentSide)
+                1 -> Mines(vm, minesWidth)
                 else -> Typer(vm)
             }
         }
@@ -83,7 +86,7 @@ private fun best(vm: LauncherViewModel, key: String) = vm.prefs.gameBest(key)
 private data class P(val x: Int, val y: Int)
 
 @Composable
-private fun Serpent(vm: LauncherViewModel) {
+private fun Serpent(vm: LauncherViewModel, side: androidx.compose.ui.unit.Dp) {
     val t = LocalTerm.current
     val n = 18
     val body = remember { mutableStateListOf(P(8, 9), P(7, 9), P(6, 9)) }
@@ -124,7 +127,7 @@ private fun Serpent(vm: LauncherViewModel) {
         }
     }
 
-    Column(Modifier.widthIn(max = 520.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.widthIn(max = side), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             T("score $score", color = t.accent, weight = FontWeight.Bold, modifier = Modifier.weight(1f))
             T("best $top", color = t.dim)
@@ -181,7 +184,7 @@ private fun Serpent(vm: LauncherViewModel) {
 // ───────────────────────── mines ─────────────────────────
 
 @Composable
-private fun Mines(vm: LauncherViewModel) {
+private fun Mines(vm: LauncherViewModel, width: androidx.compose.ui.unit.Dp) {
     val t = LocalTerm.current
     val w = 9; val h = 11; val count = 14
     var mines by remember { mutableStateOf(emptySet<Int>()) }
@@ -222,7 +225,7 @@ private fun Mines(vm: LauncherViewModel) {
         }
     }
 
-    Column(Modifier.widthIn(max = 460.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.widthIn(max = width), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth()) {
             T("⚑ ${count - flags.size}", color = t.warn, modifier = Modifier.weight(1f))
             T(if (state == 0) "tap to start" else "${((if (state == 1) now else now) - started).coerceAtLeast(0) / 1000}s", color = t.accent)
