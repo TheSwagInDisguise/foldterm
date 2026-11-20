@@ -650,6 +650,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
     val engine by vm.prefs.searchEngine.collectAsStateWithLifecycle()
+    val keyClicks by vm.prefs.keyClicks.collectAsStateWithLifecycle()
     val summaryHidden by vm.prefs.summaryHidden.collectAsStateWithLifecycle()
     val autoTheme by vm.prefs.autoTheme.collectAsStateWithLifecycle()
     val dayTheme by vm.prefs.dayTheme.collectAsStateWithLifecycle()
@@ -1098,6 +1099,12 @@ fun SettingsScreen(vm: LauncherViewModel) {
                         Tabs(listOf("off", "on"), if (morning) 1 else 0, { vm.prefs.setMorningBrief(it == 1) })
                     }
                     T("prints your day the first time you open FoldTerm each morning; `brief` any time", color = t.dim, size = 11.sp)
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("key clicks", modifier = Modifier.weight(1f))
+                        Tabs(listOf("off", "on"), if (keyClicks) 1 else 0, { vm.prefs.setKeyClicks(it == 1) })
+                    }
+                    T("a soft click on each keystroke in the prompt (follows the system touch-sounds setting)", color = t.dim, size = 11.sp)
                     Divider()
                     T("backup", weight = FontWeight.Bold)
                     T("save every setting (themes, layouts, notes, tasks, pairs, aliases…) to a file, or restore one", color = t.dim, size = 12.sp)

@@ -386,6 +386,9 @@ class Prefs(context: Context) {
         summaryHidden.value = next; sp.edit().putStringSet("summaryHidden", next).apply()
     }
 
+    val keyClicks = MutableStateFlow(sp.getBoolean("keyClicks", false))
+    fun setKeyClicks(v: Boolean) { keyClicks.value = v; sp.edit().putBoolean("keyClicks", v).apply() }
+
     /** Text size multiplier on top of the system font scale. */
     val textScale = MutableStateFlow(sp.getFloat("textScale", 1f))
     fun setTextScale(v: Float) { textScale.value = v; sp.edit().putFloat("textScale", v).apply() }

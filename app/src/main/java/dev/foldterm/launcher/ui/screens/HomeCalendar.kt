@@ -218,14 +218,15 @@ private fun AgendaPanel(vm: LauncherViewModel, modifier: Modifier) {
     val now by vm.now.collectAsStateWithLifecycle()
     val perms by vm.perms.collectAsStateWithLifecycle()
     val upcoming = remember(events, now) { events.filter { it.end > now }.take(40) }
+    val tasks by vm.tasks.collectAsStateWithLifecycle()
     Panel(modifier, title = "agenda", trailing = { T("cal ↗", color = LocalTerm.current.dim, size = 12.sp, modifier = Modifier.clickable { vm.go(Section.CALENDAR) }) }) {
         if (perms["calendar"] != true) {
             Empty("calendar permission denied", "grant") { vm.requestPermission("calendar") }
             return@Panel
         }
-        if (upcoming.isEmpty()) { Empty("no upcoming events", "+ new event") { vm.newEvent() }; return@Panel }
+        if (upcoming.isEmpty() && tasks.none { !it.done && it.due != null }) { Empty("no upcoming events", "+ new event") { vm.newEvent() }; return@Panel }
         LazyColumn(Modifier.fillMaxSize()) {
-            agendaItems(upcoming, now, compact = true, selected = null) { e ->
+            agendaItems(upcoming, now, compact = true, selected = null, tasks = tasks, onToggleTask = { vm.toggleTask(it) }) { e ->
                 vm.selectedEvent.value = e.instanceKey
                 vm.go(Section.CALENDAR)
             }
@@ -238,19 +239,45 @@ fun LazyListScope.agendaItems(
     now: Long,
     compact: Boolean,
     selected: String?,
+    tasks: List<dev.foldterm.launcher.data.TaskItem> = emptyList(),
+    onToggleTask: (Long) -> Unit = {},
     onClick: (CalEvent) -> Unit,
 ) {
-    val groups = events.groupBy { CalendarRepository.dayKey(it.begin) }
-    groups.forEach { (day, list) ->
+    val today = Fmt.startOfDay(now)
+    val horizon = Fmt.addDays(today, 15)
+    // open tasks join their due day; overdue ones join today
+    val dueTasks = tasks.filter { !it.done && it.due != null && it.due < horizon }
+        .groupBy { CalendarRepository.dayKey(maxOf(it.due!!, today)) }
+    val eventDays = events.groupBy { CalendarRepository.dayKey(it.begin) }
+    val dayStarts = (events.map { Fmt.startOfDay(it.begin) } + dueTasks.values.flatten().map { maxOf(it.due!!, today) })
+        .distinct().sorted()
+    dayStarts.forEach { dayStart ->
+        val day = CalendarRepository.dayKey(dayStart)
+        val list = eventDays[day].orEmpty()
         item(key = "h$day") {
             val t = LocalTerm.current
-            val label = Fmt.dayLabel(list.first().begin, now)
+            val label = Fmt.dayLabel(dayStart, now)
             T(
                 if (label == "Today") "Today · ${Fmt.shortDate(now)}" else label,
                 color = if (label == "Today") t.accent2 else t.dim,
                 weight = FontWeight.Bold, size = 14.sp,
                 modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
             )
+        }
+        dueTasks[day].orEmpty().forEach { task ->
+            item(key = "task${task.id}") {
+                val t = LocalTerm.current
+                val late = task.due!! < today
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onToggleTask(task.id) }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    T("[ ]", color = if (late) t.err else t.accent, weight = FontWeight.Bold, modifier = Modifier.width(if (compact) 92.dp else 100.dp))
+                    T((if (task.starred) "★ " else "") + task.text, color = if (late) t.err else t.fg, maxLines = 1, modifier = Modifier.weight(1f))
+                    if (late) T("overdue", color = t.err, size = 12.sp)
+                }
+            }
         }
         list.forEach { e ->
             item(key = e.instanceKey) { AgendaRow(e, now, compact, e.instanceKey == selected) { onClick(e) } }
@@ -448,6 +475,7 @@ private fun CalendarListPanel(vm: LauncherViewModel, modifier: Modifier) {
     val selected by vm.selectedEvent.collectAsStateWithLifecycle()
     val perms by vm.perms.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableIntStateOf(0) }
+    val tasks by vm.tasks.collectAsStateWithLifecycle()
     Panel(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Tabs(listOf("agenda", "day", "week", "month"), mode, { mode = it })
@@ -499,7 +527,7 @@ private fun CalendarListPanel(vm: LauncherViewModel, modifier: Modifier) {
             val windowed = remember(events, start) { events.filter { it.begin < Fmt.addDays(start, 14) } }
             if (windowed.isEmpty()) Empty("no events in this range", "+ new event") { vm.newEvent(start + 9 * 3_600_000) }
             LazyColumn(Modifier.fillMaxSize()) {
-                agendaItems(windowed, now, compact = false, selected = selected) { vm.selectedEvent.value = it.instanceKey }
+                agendaItems(windowed, now, compact = false, selected = selected, tasks = tasks, onToggleTask = { vm.toggleTask(it) }) { vm.selectedEvent.value = it.instanceKey }
             }
         } else if (mode == 1) {
             DayTimeline(

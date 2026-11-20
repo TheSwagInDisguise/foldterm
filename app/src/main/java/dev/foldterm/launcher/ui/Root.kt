@@ -485,6 +485,8 @@ private fun Prompt(vm: LauncherViewModel, focus: FocusRequester, modifier: Modif
     val open by vm.shellOpen.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
     var histIdx by remember { mutableIntStateOf(-1) }
+    val keyClicks by vm.prefs.keyClicks.collectAsStateWithLifecycle()
+    val view = androidx.compose.ui.platform.LocalView.current
     val shape = RoundedCornerShape(22.dp)
     Row(
         modifier.heightIn(min = 52.dp).clip(shape).background(t.panel)
@@ -497,7 +499,10 @@ private fun Prompt(vm: LauncherViewModel, focus: FocusRequester, modifier: Modif
         Spacer(Modifier.width(12.dp))
         BasicTextField(
             value = text,
-            onValueChange = { vm.input.value = it; vm.shellOpen.value = true; histIdx = -1; vm.selIndex.value = 0 },
+            onValueChange = {
+                if (keyClicks && it.length != text.length) view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
+                vm.input.value = it; vm.shellOpen.value = true; histIdx = -1; vm.selIndex.value = 0
+            },
             singleLine = true,
             textStyle = TextStyle(fontFamily = Mono, fontSize = 16.sp, color = t.fg),
             cursorBrush = SolidColor(t.accent),
