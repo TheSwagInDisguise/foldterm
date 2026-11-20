@@ -163,6 +163,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // ───────────────────────── refresh ─────────────────────────
 
     fun refresh(force: Boolean = false) {
+        controlsTick.value++
         if (refreshJob?.isActive == true && !force) return
         refreshJob = viewModelScope.launch {
             Fmt.is24 = DateFormat.is24HourFormat(ctx)
@@ -413,6 +414,22 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     val iconPacks = dev.foldterm.launcher.data.IconPacks(app)
+    val controls = dev.foldterm.launcher.data.Controls(app)
+    /** Bumped after a control changes so the Controls pane re-reads system state. */
+    val controlsTick = MutableStateFlow(0)
+
+    /** Runs a control action; on failure explains what to grant and opens the right screen. */
+    fun control(action: () -> String?) {
+        val err = action()
+        controlsTick.value++
+        if (err != null) {
+            out(err, LineKind.ERR)
+            when {
+                "Do Not Disturb" in err -> start(controls.dndAccessIntent())
+                "system settings" in err -> start(controls.writeSettingsIntent())
+            }
+        }
+    }
 
     /** App icon honouring the icon pack setting; packs fall back to the app's own icon. */
     fun icon(app: AppEntry): Bitmap? {

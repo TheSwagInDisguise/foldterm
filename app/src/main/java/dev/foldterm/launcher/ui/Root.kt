@@ -111,6 +111,7 @@ import dev.foldterm.launcher.ui.screens.NotesScreen
 import dev.foldterm.launcher.ui.screens.WeatherScreen
 import dev.foldterm.launcher.ui.screens.MediaScreen
 import dev.foldterm.launcher.ui.screens.NotificationCentre
+import dev.foldterm.launcher.ui.screens.ControlsScreen
 import dev.foldterm.launcher.ui.screens.WidgetsScreen
 import androidx.compose.ui.input.key.isAltPressed
 import dev.foldterm.launcher.ui.screens.PeopleScreen
@@ -291,6 +292,7 @@ private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Mo
             Section.WEATHER -> WeatherScreen(vm)
             Section.MEDIA -> MediaScreen(vm)
             Section.NOTIFS -> NotificationCentre(vm)
+            Section.CONTROLS -> ControlsScreen(vm)
             Section.NOTES -> NotesScreen(vm)
             Section.WIDGETS -> WidgetsScreen(vm)
             Section.SETTINGS -> SettingsScreen(vm)

@@ -528,6 +528,33 @@ class Shell(private val vm: LauncherViewModel) {
                 }
             }
         },
+        Cmd("bright", "bright [0-100|auto]", "screen brightness", setOf("brightness")) { args, _ ->
+            val a = args.firstOrNull()?.lowercase()?.removeSuffix("%")
+            when {
+                a == null -> vm.out("brightness ${(vm.controls.brightness() * 100).toInt()}%${if (vm.controls.autoBrightness()) " (auto)" else ""}")
+                a == "auto" -> vm.control { vm.controls.setAutoBrightness(true) }
+                else -> { val v = a.toIntOrNull() ?: error("usage: bright 0-100 | auto"); vm.control { vm.controls.setBrightness(v / 100f) }; vm.out("brightness → $v%", LineKind.OK) }
+            }
+        },
+        Cmd("dnd", "dnd [on|off]", "do not disturb") { args, _ ->
+            val on = when (args.firstOrNull()?.lowercase()) { "on" -> true; "off" -> false; else -> !vm.controls.dndOn() }
+            vm.control { vm.controls.setDnd(on) }
+            vm.out("do not disturb ${if (on) "on" else "off"}", LineKind.OK)
+        },
+        Cmd("ring", "ring <normal|vibrate|silent>", "ringer mode", setOf("ringer")) { args, _ ->
+            val mode = when (args.firstOrNull()?.lowercase()) {
+                "normal", "on", "loud" -> android.media.AudioManager.RINGER_MODE_NORMAL
+                "vibrate", "vib" -> android.media.AudioManager.RINGER_MODE_VIBRATE
+                "silent", "off" -> android.media.AudioManager.RINGER_MODE_SILENT
+                else -> error("usage: ring normal | vibrate | silent")
+            }
+            vm.control { vm.controls.setRingerMode(mode) }
+        },
+        Cmd("rotate", "rotate [on|off]", "auto-rotate") { args, _ ->
+            val on = when (args.firstOrNull()?.lowercase()) { "on" -> true; "off" -> false; else -> !vm.controls.autoRotate() }
+            vm.control { vm.controls.setAutoRotate(on) }
+            vm.out("auto-rotate ${if (on) "on" else "off"}", LineKind.OK)
+        },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->
