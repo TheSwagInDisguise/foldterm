@@ -151,7 +151,15 @@ data class Note(val id: Long, val text: String, val updated: Long) {
 /** A hosted widget: its id and the height the user chose, in dp. */
 data class WidgetSlot(val id: Int, val heightDp: Int)
 
-data class TaskItem(val id: Long, val text: String, val done: Boolean, val created: Long)
+data class TaskItem(
+    val id: Long,
+    val text: String,
+    val done: Boolean,
+    val created: Long,
+    /** Start of the due day, or null. */
+    val due: Long? = null,
+    val starred: Boolean = false,
+)
 
 data class StepState(val available: Boolean, val permitted: Boolean, val steps: Int?)
 

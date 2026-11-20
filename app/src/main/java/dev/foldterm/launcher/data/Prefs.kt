@@ -347,14 +347,20 @@ class Prefs(context: Context) {
         val arr = JSONArray(sp.getString("tasks", "[]"))
         (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
-            TaskItem(o.getLong("id"), o.getString("text"), o.optBoolean("done"), o.optLong("created"))
+            TaskItem(
+                o.getLong("id"), o.getString("text"), o.optBoolean("done"), o.optLong("created"),
+                due = o.optLong("due", 0L).takeIf { it > 0 }, starred = o.optBoolean("starred"),
+            )
         }
     }.getOrDefault(emptyList())
 
     fun saveTasks(tasks: List<TaskItem>) {
         val arr = JSONArray()
         tasks.forEach {
-            arr.put(JSONObject().put("id", it.id).put("text", it.text).put("done", it.done).put("created", it.created))
+            arr.put(
+                JSONObject().put("id", it.id).put("text", it.text).put("done", it.done).put("created", it.created)
+                    .put("due", it.due ?: 0L).put("starred", it.starred),
+            )
         }
         sp.edit().putString("tasks", arr.toString()).apply()
     }

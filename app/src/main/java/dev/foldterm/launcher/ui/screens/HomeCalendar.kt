@@ -561,9 +561,14 @@ private fun EventDetailPanel(vm: LauncherViewModel, modifier: Modifier) {
 @Composable
 fun TasksPanel(vm: LauncherViewModel, modifier: Modifier) {
     val t = LocalTerm.current
-    val tasks by vm.tasks.collectAsStateWithLifecycle()
+    val raw by vm.tasks.collectAsStateWithLifecycle()
+    val tasks = remember(raw) { vm.sortedTasks(raw) }
+    val today = Fmt.startOfDay(System.currentTimeMillis())
     var draft by remember { mutableStateOf("") }
-    Panel(modifier, title = "tasks", trailing = { T("${tasks.count { !it.done }} to do", color = t.dim, size = 13.sp) }) {
+    Panel(modifier, title = "tasks", trailing = {
+        val overdue = tasks.count { !it.done && it.due != null && it.due < today }
+        T("${tasks.count { !it.done }} to do${if (overdue > 0) " · $overdue overdue" else ""}", color = if (overdue > 0) t.err else t.dim, size = 13.sp)
+    }) {
         LazyColumn(Modifier.weight(1f, fill = false)) {
             items(tasks.size, key = { tasks[it].id }) { i ->
                 val task = tasks[i]
@@ -574,13 +579,21 @@ fun TasksPanel(vm: LauncherViewModel, modifier: Modifier) {
                     T(if (task.done) "[x]" else "[ ]", color = if (task.done) t.ok else t.accent, weight = FontWeight.Bold)
                     Spacer(Modifier.width(12.dp))
                     T(task.text, color = if (task.done) t.dim else t.fg, modifier = Modifier.weight(1f))
+                    val due = task.due
+                    if (due != null && !task.done) {
+                        val late = due < today
+                        T(if (late) "overdue" else Fmt.dayLabel(due).let { if (it.length > 9) Fmt.monthDay(due) else it }.lowercase(),
+                            color = if (late) t.err else if (due == today) t.warn else t.dim, size = 12.sp)
+                    }
+                    T(if (task.starred) "★" else "☆", color = if (task.starred) t.warn else t.dim,
+                        modifier = Modifier.clip(CircleShape).clickable { vm.starTask(task.id) }.padding(8.dp))
                     T("✕", color = t.dim, modifier = Modifier.clip(CircleShape).clickable { vm.removeTask(task.id) }.padding(8.dp))
                 }
             }
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Field(draft, { draft = it }, "add a task", Modifier.weight(1f), onDone = { vm.addTask(draft); draft = "" })
+            Field(draft, { draft = it }, "add a task · e.g. pay rent fri !", Modifier.weight(1f), onDone = { vm.addTask(draft); draft = "" })
             Spacer(Modifier.width(8.dp))
             TButton("add") { vm.addTask(draft); draft = "" }
         }

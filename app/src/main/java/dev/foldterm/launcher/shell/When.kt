@@ -34,6 +34,37 @@ object When {
         return h to min
     }
 
+    /**
+     * Pulls a due day and a "!" priority marker off a task: "pay rent fri !" →
+     * ("pay rent", start of Friday, starred). Day words may lead or trail.
+     */
+    fun task(input: String, now: Long = System.currentTimeMillis()): Triple<String, Long?, Boolean> {
+        val words = input.trim().split(Regex("\\s+")).toMutableList()
+        var starred = false
+        if (words.lastOrNull() == "!") { starred = true; words.removeAt(words.lastIndex) }
+        if (words.firstOrNull() == "!") { starred = true; words.removeAt(0) }
+        fun dayOf(w: String): Long? {
+            val c = Calendar.getInstance().apply {
+                timeInMillis = now; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }
+            when (w.lowercase()) {
+                "today", "tonight" -> return c.timeInMillis
+                "tomorrow", "tmr", "tmrw" -> { c.add(Calendar.DAY_OF_YEAR, 1); return c.timeInMillis }
+            }
+            val idx = days.indexOfFirst { w.length >= 3 && w.lowercase().startsWith(it) }
+            if (idx < 0) return null
+            var diff = (idx + 1 - c.get(Calendar.DAY_OF_WEEK) + 7) % 7
+            if (diff == 0) diff = 7
+            c.add(Calendar.DAY_OF_YEAR, diff)
+            return c.timeInMillis
+        }
+        var due: Long? = null
+        words.lastOrNull()?.let { w -> dayOf(w)?.let { due = it; words.removeAt(words.lastIndex) } }
+        if (due == null) words.firstOrNull()?.let { w -> dayOf(w)?.let { due = it; words.removeAt(0) } }
+        if (words.lastOrNull()?.lowercase() in setOf("by", "on", "due")) words.removeAt(words.lastIndex)
+        return Triple(words.joinToString(" "), due, starred)
+    }
+
     data class Parsed(val begin: Long, val hasTime: Boolean, val title: String)
 
     private val days = listOf("sun", "mon", "tue", "wed", "thu", "fri", "sat")

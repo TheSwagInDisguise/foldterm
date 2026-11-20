@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.26.0" to listOf("tasks take a due day and priority: `todo add pay rent fri !`", "overdue tasks turn red and sort first; tap ☆ to star"),
     "0.25.1" to listOf("app shortcuts: long-press an app for its shortcuts; the prompt finds them too (needs FoldTerm as home app)"),
     "0.24.0" to listOf("saved weather places: + add place in the Weather pane", "`weather tokyo` prints anywhere's forecast"),
     "0.23.0" to listOf("Calendar week view: seven day columns on one timeline; tap a slot to add an event"),
@@ -993,9 +994,24 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // tasks
     fun addTask(text: String) {
         if (text.isBlank()) return
-        tasks.update { it + TaskItem(System.nanoTime(), text.trim(), false, System.currentTimeMillis()) }
+        val (title, due, starred) = dev.foldterm.launcher.shell.When.task(text)
+        if (title.isBlank()) return
+        tasks.update { it + TaskItem(System.nanoTime(), title, false, System.currentTimeMillis(), due, starred) }
         prefs.saveTasks(tasks.value)
     }
+    fun starTask(id: Long) {
+        tasks.update { list -> list.map { if (it.id == id) it.copy(starred = !it.starred) else it } }
+        prefs.saveTasks(tasks.value)
+    }
+
+    /** Open tasks first (overdue, starred, due soonest, oldest), then done ones. */
+    fun sortedTasks(list: List<TaskItem>): List<TaskItem> {
+        val today = Fmt.startOfDay(System.currentTimeMillis())
+        return list.sortedWith(
+            compareBy<TaskItem>({ it.done }, { !(it.due != null && it.due < today) }, { !it.starred }, { it.due ?: Long.MAX_VALUE }, { it.created }),
+        )
+    }
+
     fun toggleTask(id: Long) {
         tasks.update { list -> list.map { if (it.id == id) it.copy(done = !it.done) else it } }
         prefs.saveTasks(tasks.value)
