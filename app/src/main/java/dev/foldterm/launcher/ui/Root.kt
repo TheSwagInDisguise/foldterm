@@ -108,6 +108,7 @@ import dev.foldterm.launcher.ui.screens.HomeScreen
 import dev.foldterm.launcher.ui.screens.MessagesScreen
 import dev.foldterm.launcher.ui.screens.NewsScreen
 import dev.foldterm.launcher.ui.screens.NotesScreen
+import dev.foldterm.launcher.ui.screens.WeatherScreen
 import dev.foldterm.launcher.ui.screens.WidgetsScreen
 import androidx.compose.ui.input.key.isAltPressed
 import dev.foldterm.launcher.ui.screens.PeopleScreen
@@ -284,6 +285,7 @@ private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Mo
             Section.PHOTOS -> PhotosScreen(vm)
             Section.HEALTH -> HealthScreen(vm)
             Section.NEWS -> NewsScreen(vm)
+            Section.WEATHER -> WeatherScreen(vm)
             Section.NOTES -> NotesScreen(vm)
             Section.WIDGETS -> WidgetsScreen(vm)
             Section.SETTINGS -> SettingsScreen(vm)
@@ -344,7 +346,7 @@ private fun WeatherChip(vm: LauncherViewModel) {
     val shape = RoundedCornerShape(22.dp)
     Row(
         Modifier.clip(shape).background(t.panel).border(1.dp, t.border, shape)
-            .clickable { vm.execShell("weather") }
+            .clickable { vm.go(Section.WEATHER) }
             .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -60,15 +60,19 @@ class OnlineRepository(private val ctx: Context) {
 
     fun weather(lat: Double, lon: Double, fahrenheit: Boolean): Weather {
         val unit = if (fahrenheit) "fahrenheit" else "celsius"
+        val windUnit = if (fahrenheit) "mph" else "kmh"
         val url = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
-            "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min" +
-            "&hourly=precipitation_probability&forecast_days=2&temperature_unit=$unit&timezone=auto"
+            "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m" +
+            "&hourly=temperature_2m,precipitation_probability" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset" +
+            "&forecast_days=7&temperature_unit=$unit&wind_speed_unit=$windUnit&timezone=auto"
         val json = JSONObject(get(url))
         val cur = json.getJSONObject("current")
         val daily = json.getJSONObject("daily")
         val hourly = json.getJSONObject("hourly")
         val times = hourly.getJSONArray("time")
         val probs = hourly.getJSONArray("precipitation_probability")
+        val temps = hourly.getJSONArray("temperature_2m")
         val nowIso = cur.getString("time").take(13) // yyyy-MM-ddTHH
         var startIdx = 0
         for (i in 0 until times.length()) if (times.getString(i).take(13) == nowIso) { startIdx = i; break }
@@ -78,10 +82,26 @@ class OnlineRepository(private val ctx: Context) {
             if (i >= probs.length()) break
             if (probs.optInt(i, 0) >= 50) { rainIn = h; break }
         }
+        val hours = (0 until 24).mapNotNull { h ->
+            val i = startIdx + h
+            if (i >= times.length()) null
+            else HourPoint(times.getString(i).substring(11, 13), temps.optDouble(i, 0.0), probs.optInt(i, 0))
+        }
+        val dDates = daily.getJSONArray("time")
+        val days = (0 until dDates.length()).map { i ->
+            DayPoint(
+                date = dDates.getString(i),
+                code = daily.getJSONArray("weather_code").optInt(i, 0),
+                min = daily.getJSONArray("temperature_2m_min").optDouble(i, 0.0),
+                max = daily.getJSONArray("temperature_2m_max").optDouble(i, 0.0),
+                rainProb = daily.getJSONArray("precipitation_probability_max").optInt(i, 0),
+            )
+        }
         val place = runCatching {
             @Suppress("DEPRECATION")
             Geocoder(ctx).getFromLocation(lat, lon, 1)?.firstOrNull()?.let { it.locality ?: it.subAdminArea ?: it.adminArea }
         }.getOrNull()
+        fun clock(iso: String?) = iso?.takeIf { it.length >= 16 }?.substring(11, 16)
         return Weather(
             temp = cur.getDouble("temperature_2m"),
             code = cur.getInt("weather_code"),
@@ -91,6 +111,15 @@ class OnlineRepository(private val ctx: Context) {
             fahrenheit = fahrenheit,
             place = place,
             fetchedAt = System.currentTimeMillis(),
+            feelsLike = cur.optDouble("apparent_temperature").takeIf { !it.isNaN() },
+            windSpeed = cur.optDouble("wind_speed_10m").takeIf { !it.isNaN() },
+            windDir = cur.optInt("wind_direction_10m", -1).takeIf { it >= 0 },
+            windUnit = if (fahrenheit) "mph" else "km/h",
+            uvMax = daily.optJSONArray("uv_index_max")?.optDouble(0)?.takeIf { !it.isNaN() },
+            sunrise = clock(daily.optJSONArray("sunrise")?.optString(0)),
+            sunset = clock(daily.optJSONArray("sunset")?.optString(0)),
+            hourly = hours,
+            daily = days,
         )
     }
 

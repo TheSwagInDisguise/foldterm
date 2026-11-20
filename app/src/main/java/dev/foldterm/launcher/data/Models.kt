@@ -93,11 +93,29 @@ data class Weather(
     val fahrenheit: Boolean,
     val place: String?,
     val fetchedAt: Long,
+    val feelsLike: Double? = null,
+    val windSpeed: Double? = null,
+    val windDir: Int? = null,
+    val windUnit: String = "km/h",
+    val uvMax: Double? = null,
+    val sunrise: String? = null,
+    val sunset: String? = null,
+    val hourly: List<HourPoint> = emptyList(),
+    val daily: List<DayPoint> = emptyList(),
 ) {
     val unit: String get() = if (fahrenheit) "F" else "C"
+    /** Compass point for the wind direction, e.g. "SW". */
+    val windCompass: String?
+        get() = windDir?.let { listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")[((it + 22) % 360) / 45] }
     val description: String get() = weatherText(code)
     val glyph: String get() = weatherGlyph(code)
 }
+
+/** One forecast hour: "HH" label, temperature, chance of rain (%). */
+data class HourPoint(val hour: String, val temp: Double, val rainProb: Int)
+
+/** One forecast day: ISO date, weather code, low/high, chance of rain (%). */
+data class DayPoint(val date: String, val code: Int, val min: Double, val max: Double, val rainProb: Int)
 
 data class NewsItem(val title: String, val link: String, val source: String, val published: Long?)
 

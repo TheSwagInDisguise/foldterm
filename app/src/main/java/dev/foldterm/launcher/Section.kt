@@ -24,6 +24,7 @@ enum class Section(val id: String, val title: String, val glyph: String) {
     PEOPLE("people", "People", "☺"),
     PHOTOS("photos", "Photos", "▣"),
     HEALTH("health", "Health", "♥"),
+    WEATHER("weather", "Weather", "☁"),
     NEWS("news", "News", "≡"),
     NOTES("notes", "Notes", "✎"),
     WIDGETS("widgets", "Widgets", "◫"),
@@ -43,6 +44,7 @@ enum class Section(val id: String, val title: String, val glyph: String) {
                     "prefs", "config" -> SETTINGS
                     "note", "memo", "scratch" -> NOTES
                     "widget" -> WIDGETS
+                    "wttr", "forecast" -> WEATHER
                     else -> null
                 }
         }

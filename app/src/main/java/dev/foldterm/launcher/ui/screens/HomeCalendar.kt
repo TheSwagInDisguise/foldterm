@@ -247,10 +247,11 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
                 }
             }
             Divider()
-            SummaryRow("☁", "Weather", t.warn, onClick = { vm.execShell("weather") }) {
+            SummaryRow("☁", "Weather", t.warn, onClick = { vm.go(Section.WEATHER) }) {
                 val w = weather
                 if (w == null) wStatus.ifBlank { "Fetching forecast…" }
                 else buildString {
+                    severeLine(w)?.let { append("⚠ $it. ") }
                     append(if (w.rainInHours == null) "No rain in the next 12 hours. " else "Rain likely in about ${w.rainInHours}h. ")
                     append("${w.description}, ${w.temp.toInt()}°${w.unit} now; high of ${w.high.toInt()}° today")
                     w.place?.let { append(" in $it") }
