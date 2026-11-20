@@ -73,6 +73,10 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.22.0" to listOf(
+        "photo viewer: tap a photo, swipe through, share or open it",
+        "album chips (Camera, Screenshots, …) filter the Photos grid",
+    ),
     "0.21.0" to listOf(
         "custom theme: Settings → theme → custom, then pick accents and background",
         "panels, borders and glows are derived from your colours automatically",

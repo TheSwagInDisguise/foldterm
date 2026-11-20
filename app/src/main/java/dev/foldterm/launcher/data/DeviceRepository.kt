@@ -32,23 +32,27 @@ class DeviceRepository(private val ctx: Context) {
                 ctx.checkSelfPermission("android.permission.READ_MEDIA_VISUAL_USER_SELECTED") == PackageManager.PERMISSION_GRANTED)
     }
 
-    fun photos(limit: Int = 120): List<Photo> {
+    fun photos(limit: Int = 400): List<Photo> {
         if (!photosGranted()) return emptyList()
         val out = mutableListOf<Photo>()
         val base = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         runCatching {
             ctx.contentResolver.query(
-                base, arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DATE_ADDED),
+                base, arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DATE_ADDED, MediaStore.Images.Media.BUCKET_DISPLAY_NAME),
                 null, null, "${MediaStore.Images.Media.DATE_ADDED} DESC",
             )?.use { c ->
                 while (c.moveToNext() && out.size < limit) {
                     val id = c.getLong(0)
-                    out += Photo(id, ContentUris.withAppendedId(base, id), c.getLong(1) * 1000)
+                    out += Photo(id, ContentUris.withAppendedId(base, id), c.getLong(1) * 1000, c.getString(2) ?: "")
                 }
             }
         }
         return out
     }
+
+    /** Screen-sized version for the viewer (not cached; the pager only keeps nearby pages). */
+    fun large(p: Photo, px: Int = 2048): Bitmap? =
+        runCatching { ctx.contentResolver.loadThumbnail(p.uri, Size(px, px), null) }.getOrNull()
 
     fun thumbnail(p: Photo, px: Int = 320): Bitmap? {
         thumbCache.get(p.id)?.let { return it }

@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -389,27 +390,90 @@ fun PhotosScreen(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val photos by vm.photos.collectAsStateWithLifecycle()
     val perms by vm.perms.collectAsStateWithLifecycle()
-    Panel(Modifier.fillMaxSize(), title = "photos", trailing = { T("${photos.size} recent", color = t.dim, size = 12.sp) }) {
-        if (perms["photos"] != true) { Empty("photo access denied", "grant") { vm.requestPermission("photos") }; return@Panel }
-        if (photos.isEmpty()) { Empty("no photos found"); return@Panel }
-        LazyVerticalGrid(columns = GridCells.Adaptive(150.dp), modifier = Modifier.fillMaxSize()) {
-            items(photos.size, key = { photos[it].id }) { i ->
-                val p = photos[i]
-                Box(
-                    Modifier.padding(4.dp).aspectRatio(1f).clip(RoundedCornerShape(14.dp))
-                        .clickable { vm.start(Intent(Intent.ACTION_VIEW).setDataAndType(p.uri, "image/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)) },
-                ) {
-                    AsyncBitmap(p.id, Modifier.fillMaxSize()) { vm.deviceRepo.thumbnail(p) }
-                    val day = Fmt.dayLabel(p.dateMs)
-                    if (i == 0 || Fmt.dayLabel(photos[i - 1].dateMs) != day) {
-                        Box(Modifier.padding(6.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                            T(day, color = Color.White, size = 11.sp)
+    var album by rememberSaveable { mutableStateOf<String?>(null) }
+    var viewing by remember { mutableStateOf<Int?>(null) }
+    val albums = remember(photos) { photos.groupingBy { it.album }.eachCount().entries.filter { it.key.isNotBlank() }.sortedByDescending { it.value }.take(8).map { it.key } }
+    val shown = remember(photos, album) { if (album == null) photos else photos.filter { it.album == album } }
+    Box(Modifier.fillMaxSize()) {
+        Panel(Modifier.fillMaxSize(), title = "photos", trailing = { T("${shown.size}${if (album == null) " recent" else " in $album"}", color = t.dim, size = 12.sp) }) {
+            if (perms["photos"] != true) { Empty("photo access denied", "grant") { vm.requestPermission("photos") }; return@Panel }
+            if (photos.isEmpty()) { Empty("no photos found"); return@Panel }
+            if (albums.size > 1) {
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                    item { AlbumChip("all", album == null) { album = null } }
+                    items(albums.size) { i -> AlbumChip(albums[i], album == albums[i]) { album = albums[i] } }
+                }
+            }
+            LazyVerticalGrid(columns = GridCells.Adaptive(150.dp), modifier = Modifier.fillMaxSize()) {
+                items(shown.size, key = { shown[it].id }) { i ->
+                    val p = shown[i]
+                    Box(Modifier.padding(4.dp).aspectRatio(1f).clip(RoundedCornerShape(14.dp)).clickable { viewing = i }) {
+                        AsyncBitmap(p.id, Modifier.fillMaxSize()) { vm.deviceRepo.thumbnail(p) }
+                        val day = Fmt.dayLabel(p.dateMs)
+                        if (i == 0 || Fmt.dayLabel(shown[i - 1].dateMs) != day) {
+                            Box(Modifier.padding(6.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                T(day, color = Color.White, size = 11.sp)
+                            }
                         }
                     }
                 }
             }
         }
+        val start = viewing
+        if (start != null && start in shown.indices) PhotoViewer(vm, shown, start) { viewing = null }
     }
+}
+
+@Composable
+private fun AlbumChip(label: String, on: Boolean, onClick: () -> Unit) {
+    val t = LocalTerm.current
+    Box(
+        Modifier.clip(RoundedCornerShape(50)).background(if (on) t.button else t.chip).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp),
+    ) { T(label, color = if (on) t.onButton else t.dim, size = 12.sp, maxLines = 1) }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun PhotoViewer(vm: LauncherViewModel, photos: List<dev.foldterm.launcher.data.Photo>, start: Int, onClose: () -> Unit) {
+    val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = start) { photos.size }
+    androidx.activity.compose.BackHandler(onBack = onClose)
+    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(22.dp)).background(Color.Black)) {
+        androidx.compose.foundation.pager.HorizontalPager(state = pager, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
+            val p = photos[page]
+            val bmp by produceState<android.graphics.Bitmap?>(null, p.id) {
+                value = withContext(Dispatchers.IO) { vm.deviceRepo.large(p) }
+            }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                val b = bmp
+                if (b != null) androidx.compose.foundation.Image(
+                    b.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                ) else T("loading…", color = Color.White.copy(alpha = 0.6f))
+            }
+        }
+        val cur = photos.getOrNull(pager.currentPage)
+        Row(
+            Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                if (cur != null) T("${Fmt.dayLabel(cur.dateMs)} · ${Fmt.time(cur.dateMs)}", color = Color.White, weight = FontWeight.SemiBold, maxLines = 1)
+                T("${pager.currentPage + 1} / ${photos.size}${cur?.album?.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""}", color = Color.White.copy(alpha = 0.7f), size = 12.sp, maxLines = 1)
+            }
+            if (cur != null) {
+                ViewerButton("share") {
+                    vm.start(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("image/*").putExtra(Intent.EXTRA_STREAM, cur.uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "share photo"))
+                }
+                ViewerButton("open") { vm.start(Intent(Intent.ACTION_VIEW).setDataAndType(cur.uri, "image/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
+            }
+            ViewerButton("✕", onClose)
+        }
+    }
+}
+
+@Composable
+private fun ViewerButton(label: String, onClick: () -> Unit) {
+    T(label, color = Color.White, size = 14.sp, weight = FontWeight.SemiBold,
+        modifier = Modifier.padding(start = 6.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.15f)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp))
 }
 
 // ───────────────────────── health / vitals ─────────────────────────

@@ -142,7 +142,7 @@ data class DayPoint(val date: String, val code: Int, val min: Double, val max: D
 
 data class NewsItem(val title: String, val link: String, val source: String, val published: Long?)
 
-data class Photo(val id: Long, val uri: Uri, val dateMs: Long)
+data class Photo(val id: Long, val uri: Uri, val dateMs: Long, val album: String = "")
 
 data class Note(val id: Long, val text: String, val updated: Long) {
     val title: String get() = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.take(80) ?: "(empty note)"
