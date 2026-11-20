@@ -9,6 +9,8 @@ enum class Section(val id: String, val title: String, val glyph: String) {
     PHOTOS("photos", "Photos", "▣"),
     HEALTH("health", "Health", "♥"),
     NEWS("news", "News", "≡"),
+    NOTES("notes", "Notes", "✎"),
+    WIDGETS("widgets", "Widgets", "◫"),
     SETTINGS("settings", "Settings", "⚙");
 
     companion object {
@@ -23,6 +25,8 @@ enum class Section(val id: String, val title: String, val glyph: String) {
                     "email", "inbox" -> MAIL
                     "gallery", "pics" -> PHOTOS
                     "prefs", "config" -> SETTINGS
+                    "note", "memo", "scratch" -> NOTES
+                    "widget" -> WIDGETS
                     else -> null
                 }
         }

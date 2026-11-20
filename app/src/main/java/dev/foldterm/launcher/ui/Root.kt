@@ -105,6 +105,9 @@ import dev.foldterm.launcher.ui.screens.HealthScreen
 import dev.foldterm.launcher.ui.screens.HomeScreen
 import dev.foldterm.launcher.ui.screens.MessagesScreen
 import dev.foldterm.launcher.ui.screens.NewsScreen
+import dev.foldterm.launcher.ui.screens.NotesScreen
+import dev.foldterm.launcher.ui.screens.WidgetsScreen
+import androidx.compose.ui.input.key.isAltPressed
 import dev.foldterm.launcher.ui.screens.PeopleScreen
 import dev.foldterm.launcher.ui.screens.PhotosScreen
 import dev.foldterm.launcher.ui.screens.SettingsScreen
@@ -178,6 +181,9 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
                 when {
                     e.key == Key.Slash && !vm.shellOpen.value -> { vm.shellOpen.value = true; runCatching { promptFocus.requestFocus() }; true }
                     e.key == Key.Escape -> { vm.onBack(); true }
+                    e.isAltPressed && e.key in sectionKeys -> {
+                        Section.entries.getOrNull(sectionKeys.indexOf(e.key))?.let { vm.go(it) }; true
+                    }
                     else -> false
                 }
             }
@@ -244,6 +250,18 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
     }
 }
 
+private val sectionKeys = listOf(Key.One, Key.Two, Key.Three, Key.Four, Key.Five, Key.Six, Key.Seven, Key.Eight, Key.Nine)
+
+@Composable
+private fun Badge(count: Int, modifier: Modifier) {
+    if (count <= 0) return
+    val t = LocalTerm.current
+    Box(
+        modifier.padding(2.dp).clip(RoundedCornerShape(50)).background(t.err).padding(horizontal = 5.dp, vertical = 1.dp),
+        contentAlignment = Alignment.Center,
+    ) { T(if (count > 9) "9+" else count.toString(), color = Color.White, size = 10.sp, weight = FontWeight.Bold) }
+}
+
 @Composable
 private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Modifier) {
     AnimatedContent(
@@ -263,6 +281,8 @@ private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Mo
             Section.PHOTOS -> PhotosScreen(vm)
             Section.HEALTH -> HealthScreen(vm)
             Section.NEWS -> NewsScreen(vm)
+            Section.NOTES -> NotesScreen(vm)
+            Section.WIDGETS -> WidgetsScreen(vm)
             Section.SETTINGS -> SettingsScreen(vm)
         }
     }
@@ -307,6 +327,8 @@ private fun TopAction(vm: LauncherViewModel, section: Section) {
         Section.CHAT -> TButton("+ new message", primary = true) { vm.sms("") }
         Section.PEOPLE -> TButton("+ new contact", primary = true) { vm.start(vm.contactsRepo.newIntent()) }
         Section.NEWS -> TButton("↻ refresh", primary = true) { vm.reloadNews() }
+        Section.NOTES -> TButton("+ new note", primary = true) { vm.newNote() }
+        Section.WIDGETS -> TButton("+ add widget", primary = true) { vm.widgetPickerOpen.value = true }
         else -> WeatherChip(vm)
     }
 }
@@ -473,6 +495,10 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
                         SuggestionKind.SECTION -> "dir"
                         SuggestionKind.COMMAND -> "cmd"
                         SuggestionKind.WEB -> "www"
+                        SuggestionKind.EVENT -> "cal"
+                        SuggestionKind.NOTE -> "txt"
+                        SuggestionKind.MESSAGE -> "msg"
+                        SuggestionKind.ALIAS -> "als"
                     }
                     T(tag, color = t.dim, size = 12.sp, modifier = Modifier.width(40.dp))
                     if (s.app != null) {
@@ -636,6 +662,8 @@ private fun DockIcon(vm: LauncherViewModel, app: AppEntry) {
     val haptic = LocalHapticFeedback.current
     val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
     var menu by remember { mutableStateOf(false) }
+    val notifs by vm.notifications.collectAsStateWithLifecycle()
+    val unread = remember(notifs, app.packageName) { notifs.count { !it.removed && it.pkg == app.packageName } }
     Box {
         Box(
             Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(t.chip)
@@ -643,6 +671,7 @@ private fun DockIcon(vm: LauncherViewModel, app: AppEntry) {
             contentAlignment = Alignment.Center,
         ) {
             AppIcon(app, 42.dp, iconStyle) { vm.icon(app) }
+            Badge(unread, Modifier.align(Alignment.TopEnd))
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { T("unpin ${app.label}") }, onClick = { menu = false; vm.unpinFromDock(app) })
@@ -657,6 +686,8 @@ private fun DockIcon(vm: LauncherViewModel, app: AppEntry) {
 @Composable
 private fun AppDrawer(vm: LauncherViewModel) {
     val t = LocalTerm.current
+    val notifs by vm.notifications.collectAsStateWithLifecycle()
+    val unreadByPkg = remember(notifs) { notifs.filter { !it.removed }.groupingBy { it.pkg }.eachCount() }
     val haptic = LocalHapticFeedback.current
     val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
@@ -692,6 +723,7 @@ private fun AppDrawer(vm: LauncherViewModel) {
                         ) {
                             Box {
                                 AppIcon(app, 52.dp, iconStyle) { vm.icon(app) }
+                                Badge(unreadByPkg[app.packageName] ?: 0, Modifier.align(Alignment.TopEnd))
                             }
                             Spacer(Modifier.height(6.dp))
                             T(app.label, size = 12.sp, maxLines = 1)

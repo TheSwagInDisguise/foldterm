@@ -2,6 +2,13 @@ package dev.foldterm.launcher
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.appwidget.AppWidgetProviderInfo
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.media.AudioManager
+import dev.foldterm.launcher.data.Note
+import dev.foldterm.launcher.data.WidgetSlot
+import dev.foldterm.launcher.data.Widgets
 import android.app.ActivityOptions
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
@@ -64,6 +71,10 @@ import java.util.Locale
 sealed interface UiRequest {
     data class Permissions(val perms: Array<String>) : UiRequest
     data object RoleHome : UiRequest
+    /** Ask the user to allow binding a widget (system dialog). */
+    data class BindWidget(val id: Int, val info: AppWidgetProviderInfo) : UiRequest
+    /** Run the widget's own configuration screen. */
+    data class ConfigureWidget(val id: Int) : UiRequest
 }
 
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
@@ -76,6 +87,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val deviceRepo = DeviceRepository(app)
     private val online = OnlineRepository(app)
     val shell = Shell(this)
+    val widgetsHost = Widgets(app)
+    val selectedNote = MutableStateFlow<Long?>(null)
+    val widgetPickerOpen = MutableStateFlow(false)
 
     // navigation / chrome
     val section = MutableStateFlow(Section.HOME)
@@ -432,6 +446,106 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun dismissNotif(n: Notif) {
         NotifListener.dismiss(n.key)
         NotificationStore.markRemoved(n.key)
+    }
+
+    // ───────────────────────── notes ─────────────────────────
+
+    fun newNote(text: String = ""): Long {
+        val id = System.currentTimeMillis()
+        prefs.saveNotes(listOf(Note(id, text, id)) + prefs.notes.value)
+        selectedNote.value = id
+        return id
+    }
+
+    fun updateNote(id: Long, text: String) {
+        prefs.saveNotes(
+            prefs.notes.value.map { if (it.id == id) it.copy(text = text, updated = System.currentTimeMillis()) else it }
+                .sortedByDescending { it.updated },
+        )
+    }
+
+    fun deleteNote(id: Long) {
+        prefs.saveNotes(prefs.notes.value.filterNot { it.id == id })
+        if (selectedNote.value == id) selectedNote.value = prefs.notes.value.firstOrNull()?.id
+    }
+
+    fun openNote(id: Long) { selectedNote.value = id; go(Section.NOTES); shellOpen.value = false; input.value = "" }
+
+    // ───────────────────────── widgets ─────────────────────────
+
+    /** Step 1: allocate an id and bind it, asking the user if needed. */
+    fun addWidget(info: AppWidgetProviderInfo) {
+        widgetPickerOpen.value = false
+        val id = widgetsHost.allocate()
+        if (widgetsHost.bindIfAllowed(id, info)) onWidgetBound(id, true)
+        else uiRequests.tryEmit(UiRequest.BindWidget(id, info))
+    }
+
+    /** Step 2: after binding, run the widget's configure screen when it has one. */
+    fun onWidgetBound(id: Int, ok: Boolean) {
+        if (!ok) { widgetsHost.delete(id); out("widget not added", LineKind.DIM); return }
+        val info = widgetsHost.info(id)
+        if (info?.configure != null) uiRequests.tryEmit(UiRequest.ConfigureWidget(id)) else onWidgetConfigured(id, true)
+    }
+
+    /** Step 3: keep it. */
+    fun onWidgetConfigured(id: Int, ok: Boolean) {
+        if (!ok) { widgetsHost.delete(id); out("widget setup cancelled", LineKind.DIM); return }
+        val info = widgetsHost.info(id)
+        val density = ctx.resources.displayMetrics.density
+        val h = ((info?.minHeight ?: 0) / density).toInt().coerceIn(110, 420)
+        prefs.saveWidgets(prefs.widgets.value + WidgetSlot(id, h))
+        out("widget added", LineKind.OK)
+    }
+
+    fun removeWidget(id: Int) {
+        widgetsHost.delete(id)
+        prefs.saveWidgets(prefs.widgets.value.filterNot { it.id == id })
+    }
+
+    fun resizeWidget(id: Int, deltaDp: Int) {
+        prefs.saveWidgets(prefs.widgets.value.map { if (it.id == id) it.copy(heightDp = (it.heightDp + deltaDp).coerceIn(80, 900)) else it })
+    }
+
+    fun moveWidget(id: Int, dir: Int) {
+        val list = prefs.widgets.value.toMutableList()
+        val i = list.indexOfFirst { it.id == id }
+        val j = i + dir
+        if (i < 0 || j !in list.indices) return
+        list[i] = list[j].also { list[j] = list[i] }
+        prefs.saveWidgets(list)
+    }
+
+    // ───────────────────────── misc device actions ─────────────────────────
+
+    /** Opens [a] then [b] beside it. Works where the device supports launching adjacent windows. */
+    fun split(a: AppEntry, b: AppEntry) {
+        launch(a)
+        viewModelScope.launch {
+            delay(700)
+            val i = ctx.packageManager.getLaunchIntentForPackage(b.packageName)
+            if (i == null) { out("can't open ${b.label} in split view", LineKind.ERR); return@launch }
+            i.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            runCatching { ctx.startActivity(i) }.onFailure { out("split: ${it.message}", LineKind.ERR) }
+        }
+    }
+
+    fun volume(percent: Int?) {
+        val am = ctx.getSystemService(AudioManager::class.java) ?: return
+        val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        if (percent == null) {
+            out("media volume ${am.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / max}%")
+            return
+        }
+        runCatching {
+            am.setStreamVolume(AudioManager.STREAM_MUSIC, (max * percent.coerceIn(0, 100) / 100f).toInt(), AudioManager.FLAG_SHOW_UI)
+        }.onSuccess { out("media volume → ${percent.coerceIn(0, 100)}%", LineKind.OK) }
+            .onFailure { out("volume: ${it.message}", LineKind.ERR) }
+    }
+
+    fun copy(text: String) {
+        ctx.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("foldterm", text))
+        out("copied", LineKind.OK)
     }
 
     /** Pulls down the notification shade (hidden but widely available API). */

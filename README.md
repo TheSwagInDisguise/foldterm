@@ -39,11 +39,15 @@ Agenda, inbox, people, weather and news in hinge-aware panes, with a command lin
 | **▣ Photos** | Recent photos grouped by day |
 | **♥ Health** | Step counter with a daily goal, plus an `htop`-style view of battery, storage, memory and hinge posture |
 | **≡ News** | Headlines from any RSS or Atom feeds you choose |
+| **✎ Notes** | A scratchpad with autosave and search. `note <text>` jots from the prompt |
+| **◫ Widgets** | Host real Android widgets (clocks, music, to-do lists…) in one or two columns, with reorder and resize |
 | **⚙ Settings** | Themes, permissions, default-launcher setup, units, location override, feeds |
 
 The dock at the bottom holds your pinned apps, the app drawer and a **now playing** media control. Long-press any app to pin, unpin, hide, open app info or uninstall.
 
-**Gestures:** swipe up for the app drawer, and swipe down for the notification shade (or to close the drawer).
+**Gestures:** swipe up for the app drawer, and swipe down for the notification shade (or to close the drawer). On a hardware keyboard, <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> jumps between sections.
+
+**Badges:** dock and drawer icons show how many notifications each app has waiting.
 
 **Look:** pick colour or **mono** icons (tinted to the theme, like an old phosphor screen), and use the theme's background or your own wallpaper.
 
@@ -82,12 +86,17 @@ Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you t
   alarm <7:30|7pm> [label]
   event [day] [time] <title>  e.g. event fri 3pm dentist
   torch [on|off] · shade
+  note <text> · notes [filter]
+  alias name=command · unalias name   e.g. alias wk=open slack
+  split <app> | <app>       two apps side by side (experimental)
+  vol [0-100] · mute
+  maps <place> · yt <query> · copy <text>
   settings [wifi|bt|display|battery|apps|sound]
   grant · access · default  permissions · notification access · set as home app
   uptime · fold · date · clear · reload · version
 ```
 
-Maths gets answered as you type. With the prompt empty, it shows your recent apps and commands. Apps you open often rank higher in results. Anything that isn't a command or a match becomes a web search.
+The prompt searches everything: apps, contacts, upcoming events, notes and messages. Typing a web address (`github.com`) opens it, and maths gets answered as you type. With the prompt empty, it shows your recent apps and commands. Apps you open often rank higher in results. Anything that isn't a command or a match becomes a web search.
 
 ## Install
 

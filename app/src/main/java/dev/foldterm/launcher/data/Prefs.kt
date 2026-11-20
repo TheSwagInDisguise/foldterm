@@ -25,6 +25,9 @@ class Prefs(context: Context) {
     /** "theme" follows the theme accent; otherwise a #RRGGBB colour. */
     val iconTint = MutableStateFlow(sp.getString("iconTint", "theme") ?: "theme")
     val usage = MutableStateFlow(loadUsage())
+    val notes = MutableStateFlow(loadNotes())
+    val aliases = MutableStateFlow(loadAliases())
+    val widgets = MutableStateFlow(loadWidgets())
     val recent = MutableStateFlow(sp.getString("recent", "")!!.split('|').filter { it.isNotBlank() })
 
     fun setTheme(v: String) { theme.value = v; sp.edit().putString("theme", v).apply() }
@@ -62,6 +65,47 @@ class Prefs(context: Context) {
             .putString("recent", recent.value.joinToString("|"))
             .apply()
     }
+
+    // ── notes ──
+    fun saveNotes(list: List<Note>) {
+        notes.value = list
+        val arr = JSONArray()
+        list.forEach { arr.put(JSONObject().put("id", it.id).put("text", it.text).put("updated", it.updated)) }
+        sp.edit().putString("notes", arr.toString()).apply()
+    }
+
+    private fun loadNotes(): List<Note> = runCatching {
+        val arr = JSONArray(sp.getString("notes", "[]"))
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            Note(o.getLong("id"), o.getString("text"), o.optLong("updated"))
+        }
+    }.getOrDefault(emptyList())
+
+    // ── aliases ──
+    fun setAlias(name: String, expansion: String?) {
+        val next = aliases.value.toMutableMap().apply { if (expansion == null) remove(name) else put(name, expansion) }
+        aliases.value = next
+        sp.edit().putString("aliases", JSONObject(next as Map<*, *>).toString()).apply()
+    }
+
+    private fun loadAliases(): Map<String, String> = runCatching {
+        val o = JSONObject(sp.getString("aliases", "{}")!!)
+        o.keys().asSequence().associateWith { o.getString(it) }
+    }.getOrDefault(emptyMap())
+
+    // ── widgets ──
+    fun saveWidgets(list: List<WidgetSlot>) {
+        widgets.value = list
+        val arr = JSONArray()
+        list.forEach { arr.put(JSONObject().put("id", it.id).put("h", it.heightDp)) }
+        sp.edit().putString("widgets", arr.toString()).apply()
+    }
+
+    private fun loadWidgets(): List<WidgetSlot> = runCatching {
+        val arr = JSONArray(sp.getString("widgets", "[]"))
+        (0 until arr.length()).map { i -> arr.getJSONObject(i).let { WidgetSlot(it.getInt("id"), it.optInt("h", 180)) } }
+    }.getOrDefault(emptyList())
 
     private fun loadUsage(): Map<String, Int> = runCatching {
         val o = JSONObject(sp.getString("usage", "{}")!!)

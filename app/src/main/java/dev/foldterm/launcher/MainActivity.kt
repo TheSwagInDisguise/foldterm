@@ -1,6 +1,7 @@
 package dev.foldterm.launcher
 
 import android.app.role.RoleManager
+import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Bundle
@@ -16,6 +17,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.window.layout.WindowInfoTracker
 import dev.foldterm.launcher.ui.LauncherRoot
 import kotlinx.coroutines.launch
+
+private const val REQ_BIND_WIDGET = 41
+private const val REQ_CONFIGURE_WIDGET = 42
 
 class MainActivity : ComponentActivity() {
     private val vm: LauncherViewModel by viewModels()
@@ -45,6 +49,28 @@ class MainActivity : ComponentActivity() {
                 when (req) {
                     is UiRequest.Permissions -> permissionLauncher.launch(req.perms)
                     UiRequest.RoleHome -> requestHomeRole()
+                    is UiRequest.BindWidget -> {
+                        pendingWidget = req.id
+                        val i = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
+                            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, req.id)
+                            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, req.info.provider)
+                            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER_PROFILE, req.info.profile)
+                        try {
+                            @Suppress("DEPRECATION")
+                            startActivityForResult(i, REQ_BIND_WIDGET)
+                        } catch (e: Exception) {
+                            vm.onWidgetBound(req.id, false)
+                        }
+                    }
+                    is UiRequest.ConfigureWidget -> {
+                        pendingWidget = req.id
+                        try {
+                            vm.widgetsHost.host.startAppWidgetConfigureActivityForResult(this@MainActivity, req.id, 0, REQ_CONFIGURE_WIDGET, null)
+                        } catch (e: Exception) {
+                            // some widgets declare a configure activity that can't be launched; keep the widget anyway
+                            vm.onWidgetConfigured(req.id, true)
+                        }
+                    }
                 }
             }
         }
@@ -64,6 +90,30 @@ class MainActivity : ComponentActivity() {
         } else {
             runCatching { startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }
         }
+    }
+
+    private var pendingWidget = -1
+
+    @Deprecated("Widget bind/configure flows only support request-code results")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        val id = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pendingWidget) ?: pendingWidget
+        val ok = resultCode == RESULT_OK
+        when (requestCode) {
+            REQ_BIND_WIDGET -> vm.onWidgetBound(id, ok)
+            REQ_CONFIGURE_WIDGET -> vm.onWidgetConfigured(id, ok)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        vm.widgetsHost.startListening()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        vm.widgetsHost.stopListening()
     }
 
     override fun onNewIntent(intent: Intent) {

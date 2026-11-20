@@ -17,7 +17,7 @@ enum class LineKind { CMD, OUT, DIM, OK, ERR, ACCENT }
 
 data class Line(val text: String, val kind: LineKind)
 
-enum class SuggestionKind { COMMAND, APP, CONTACT, SECTION, WEB }
+enum class SuggestionKind { COMMAND, APP, CONTACT, SECTION, WEB, EVENT, NOTE, MESSAGE, ALIAS }
 
 data class Suggestion(
     val kind: SuggestionKind,
@@ -56,6 +56,20 @@ class Shell(private val vm: LauncherViewModel) {
                 .onFailure { vm.out("calc: ${it.message}", LineKind.ERR) }
             return
         }
+        // aliases expand once: `alias wk=open slack` makes `wk` run `open slack`
+        val head = line.substringBefore(' ')
+        vm.prefs.aliases.value[head.lowercase()]?.let { expansion ->
+            val expanded = (expansion + " " + line.substringAfter(' ', "")).trim()
+            vm.out("↳ $expanded", LineKind.DIM)
+            runCommand(expanded)
+            return
+        }
+        runCommand(line)
+    }
+
+    private val urlLike = Regex("^(https?://)?([\\w-]+\\.)+[a-z]{2,}(/\\S*)?$", RegexOption.IGNORE_CASE)
+
+    private fun runCommand(line: String) {
         val parts = line.split(Regex("\\s+"))
         val name = parts[0].lowercase()
         val rest = line.substring(parts[0].length).trim()
@@ -67,6 +81,11 @@ class Shell(private val vm: LauncherViewModel) {
             return
         }
         val best = suggest(line).firstOrNull { it.kind != SuggestionKind.COMMAND }
+        if (urlLike.matches(line) && vm.apps.value.none { it.label.equals(line, true) }) {
+            vm.openUrl(if (line.startsWith("http", true)) line else "https://$line")
+            vm.shellOpen.value = false
+            return
+        }
         if (best != null && best.kind != SuggestionKind.WEB) {
             vm.out("→ ${best.label}", LineKind.DIM)
             best.run()
@@ -126,6 +145,30 @@ class Shell(private val vm: LauncherViewModel) {
                 vm.go(Section.PEOPLE); vm.selectContact(c); vm.shellOpen.value = false; vm.input.value = ""
             }
         }
+        vm.prefs.aliases.value.filterKeys { it.startsWith(first) && arg.isEmpty() }.forEach { (k, v) ->
+            out += Suggestion(SuggestionKind.ALIAS, k, "→ $v") { execute(k) }
+        }
+        if (q.length >= 2) {
+            val now = System.currentTimeMillis()
+            vm.events.value.filter { it.end > now && score(it.title, q) >= 50 }.take(2).forEach { e ->
+                out += Suggestion(SuggestionKind.EVENT, e.title, "${Fmt.dayLabel(e.begin)} ${Fmt.time(e.begin)}") {
+                    vm.selectedEvent.value = e.instanceKey; vm.go(Section.CALENDAR); vm.shellOpen.value = false; vm.input.value = ""
+                }
+            }
+            vm.prefs.notes.value.filter { it.text.contains(q, true) }.take(2).forEach { n ->
+                out += Suggestion(SuggestionKind.NOTE, n.title, "note · ${Fmt.ago(n.updated)}") { vm.openNote(n.id) }
+            }
+            vm.notifications.value.filter { !it.removed && (it.title.contains(q, true) || it.text.contains(q, true)) }.take(2).forEach { m ->
+                out += Suggestion(SuggestionKind.MESSAGE, m.title.ifBlank { m.app }, "${m.app} · ${m.text.take(40)}") {
+                    vm.selectedNotif.value = m.key
+                    vm.go(if (m.kind == dev.foldterm.launcher.data.NotifKind.MAIL) Section.MAIL else Section.CHAT)
+                    vm.shellOpen.value = false; vm.input.value = ""
+                }
+            }
+            if (urlLike.matches(q)) out += Suggestion(SuggestionKind.WEB, "open $q", "website") {
+                vm.openUrl(if (q.startsWith("http", true)) q else "https://$q"); vm.shellOpen.value = false; vm.input.value = ""
+            }
+        }
         out += Suggestion(SuggestionKind.WEB, "search \"$q\"", "web") { vm.webSearch(q); vm.shellOpen.value = false; vm.input.value = "" }
         // apps first when the query clearly names one
         return out.sortedBy {
@@ -133,8 +176,10 @@ class Shell(private val vm: LauncherViewModel) {
                 SuggestionKind.APP -> if (score(it.label, q) >= 80) 0 else 2
                 SuggestionKind.COMMAND -> 1
                 SuggestionKind.SECTION -> 1
+                SuggestionKind.ALIAS -> 0
                 SuggestionKind.CONTACT -> 3
-                SuggestionKind.WEB -> 9
+                SuggestionKind.EVENT, SuggestionKind.NOTE, SuggestionKind.MESSAGE -> 4
+                SuggestionKind.WEB -> if (it.label.startsWith("open ")) 1 else 9
             }
         }.take(limit)
     }
@@ -368,6 +413,50 @@ class Shell(private val vm: LauncherViewModel) {
             if (list.isEmpty()) vm.out("no hidden apps", LineKind.DIM)
             list.forEach { vm.out("  ${it.label}") }
         },
+        Cmd("note", "note <text>", "save a quick note", setOf("jot")) { _, rest ->
+            if (rest.isBlank()) { vm.newNote(); vm.go(Section.NOTES); vm.shellOpen.value = false; return@Cmd }
+            vm.newNote(rest); vm.out("noted", LineKind.OK)
+        },
+        Cmd("notes", "notes [filter]", "list notes") { _, rest ->
+            val list = vm.prefs.notes.value.filter { rest.isBlank() || it.text.contains(rest, true) }
+            if (list.isEmpty()) vm.out("no notes", LineKind.DIM)
+            list.take(20).forEach { vm.out("  ${Fmt.ago(it.updated).padStart(4)}  ${it.title}") }
+        },
+        Cmd("alias", "alias [name=command]", "create or list shortcuts") { _, rest ->
+            if (rest.isBlank()) {
+                val a = vm.prefs.aliases.value
+                if (a.isEmpty()) vm.out("no aliases — try `alias wk=open slack`", LineKind.DIM)
+                a.toSortedMap().forEach { (k, v) -> vm.out("  ${k.padEnd(10)} → $v") }
+                return@Cmd
+            }
+            val name = rest.substringBefore('=').substringBefore(' ').trim().lowercase()
+            val expansion = (if ('=' in rest) rest.substringAfter('=') else rest.substringAfter(' ', "")).trim().removeSurrounding("\"").removeSurrounding("'")
+            require(name.isNotEmpty() && expansion.isNotEmpty()) { "usage: alias name=command" }
+            require(commands.none { it.name == name || name in it.aliases }) { "'$name' is a built-in command" }
+            vm.prefs.setAlias(name, expansion); vm.out("alias $name → $expansion", LineKind.OK)
+        },
+        Cmd("unalias", "unalias <name>", "remove a shortcut") { args, _ ->
+            val name = args.firstOrNull()?.lowercase() ?: error("usage: unalias name")
+            require(name in vm.prefs.aliases.value) { "no alias '$name'" }
+            vm.prefs.setAlias(name, null); vm.out("removed $name", LineKind.OK)
+        },
+        Cmd("split", "split <app> | <app>", "two apps side by side (experimental)") { _, rest ->
+            val pieces = if ('|' in rest) rest.split('|', limit = 2).map { it.trim() } else rest.split(Regex("\\s+"), limit = 2)
+            val a = pieces.getOrElse(0) { "" }
+            val b = pieces.getOrElse(1) { "" }
+            val first = findApp(a) ?: error("no app matching '$a' — usage: split chrome | notes")
+            val second = findApp(b) ?: error("no app matching '$b' — usage: split chrome | notes")
+            vm.out("splitting ${first.label} | ${second.label}", LineKind.OK); vm.split(first, second)
+        },
+        Cmd("vol", "vol [0-100]", "media volume", setOf("volume")) { args, _ ->
+            vm.volume(args.firstOrNull()?.removeSuffix("%")?.toIntOrNull())
+        },
+        Cmd("mute", "mute", "media volume to 0") { _, _ -> vm.volume(0) },
+        Cmd("maps", "maps <place>", "search the map", setOf("map", "nav")) { _, rest -> vm.directions(rest) },
+        Cmd("yt", "yt <query>", "search YouTube", setOf("youtube")) { _, rest ->
+            vm.openUrl("https://www.youtube.com/results?search_query=${android.net.Uri.encode(rest)}")
+        },
+        Cmd("copy", "copy <text>", "copy text to the clipboard", setOf("cp")) { _, rest -> vm.copy(rest) },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->
