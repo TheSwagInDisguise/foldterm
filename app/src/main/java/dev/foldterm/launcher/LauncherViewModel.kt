@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.23.0" to listOf("Calendar week view: seven day columns on one timeline; tap a slot to add an event"),
     "0.22.0" to listOf(
         "photo viewer: tap a photo, swipe through, share or open it",
         "album chips (Camera, Screenshots, …) filter the Photos grid",

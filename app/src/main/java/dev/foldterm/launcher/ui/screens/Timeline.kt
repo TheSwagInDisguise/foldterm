@@ -173,3 +173,79 @@ fun DayTimeline(
 }
 
 private fun hm(min: Int) = "%02d:%02d".format(min / 60, min % 60)
+
+/** Seven day columns on one hour grid, starting at [start]. */
+@Composable
+fun WeekTimeline(
+    events: List<CalEvent>,
+    start: Long,
+    now: Long,
+    selected: String?,
+    onSelect: (CalEvent) -> Unit,
+    onCreate: (Long) -> Unit,
+) {
+    val t = LocalTerm.current
+    val scroll = rememberScrollState()
+    val density = LocalDensity.current
+    val labelW = 44.dp
+    val days = (0 until 7).map { Fmt.addDays(start, it) }
+    val perDay = remember(events, start) {
+        days.map { d -> layout(events.filter { !it.allDay && it.begin < Fmt.addDays(d, 1) && it.end > d }, d) }
+    }
+    LaunchedEffect(start) {
+        val first = perDay.flatten().minOfOrNull { it.startMin } ?: (8 * 60)
+        scroll.scrollTo(with(density) { (minOf(first, 8 * 60) - 30).coerceAtLeast(0).dp.roundToPx() })
+    }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val colW = (maxWidth - labelW) / 7
+        Column(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                Spacer(Modifier.width(labelW))
+                days.forEach { d ->
+                    val today = now in d until Fmt.addDays(d, 1)
+                    val allDay = events.count { it.allDay && it.begin < Fmt.addDays(d, 1) && it.end > d }
+                    Column(Modifier.width(colW), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                        T(java.text.SimpleDateFormat("EEE", java.util.Locale.getDefault()).format(java.util.Date(d)).lowercase(), color = if (today) t.accent else t.dim, size = 11.sp)
+                        T(java.text.SimpleDateFormat("d", java.util.Locale.getDefault()).format(java.util.Date(d)), color = if (today) t.accent else t.fg, weight = FontWeight.Bold)
+                        if (allDay > 0) T("+$allDay all-day", color = t.dim, size = 9.sp, maxLines = 1)
+                    }
+                }
+            }
+            Box(Modifier.fillMaxWidth().weight(1f).verticalScroll(scroll)) {
+                Box(Modifier.fillMaxWidth().height((24 * 60).dp)) {
+                    for (h in 0 until 24) {
+                        Row(Modifier.offset(y = (h * 60).dp).fillMaxWidth().height(60.dp)) {
+                            T("%02d".format(h), color = t.dim, size = 10.sp, modifier = Modifier.width(labelW))
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(t.border))
+                        }
+                    }
+                    days.forEachIndexed { di, d ->
+                        // tap empty space in a column to add an event at that hour
+                        for (h in 0 until 24) {
+                            Box(
+                                Modifier.offset(x = labelW + colW * di, y = (h * 60).dp).width(colW).height(60.dp)
+                                    .clickable { onCreate(d + h * 60 * MIN) },
+                            )
+                        }
+                        perDay[di].forEach { p ->
+                            val c = Color(p.e.color or 0xFF000000.toInt())
+                            val w = colW / p.cols
+                            Box(
+                                Modifier.offset(x = labelW + colW * di + w * p.col, y = p.startMin.dp)
+                                    .width(w - 2.dp).height((p.endMin - p.startMin).coerceAtLeast(20).dp - 2.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(c.copy(alpha = if (p.e.instanceKey == selected) 0.55f else 0.3f))
+                                    .clickable { onSelect(p.e) }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                            ) { T(p.e.title, size = 10.sp, weight = FontWeight.SemiBold, maxLines = 3) }
+                        }
+                        if (now in d until Fmt.addDays(d, 1)) {
+                            val nowMin = ((now - d) / MIN).toInt()
+                            Box(Modifier.offset(x = labelW + colW * di, y = nowMin.dp).width(colW).height(2.dp).background(t.err))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

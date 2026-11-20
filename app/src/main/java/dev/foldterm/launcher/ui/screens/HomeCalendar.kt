@@ -440,19 +440,20 @@ private fun CalendarListPanel(vm: LauncherViewModel, modifier: Modifier) {
     var mode by rememberSaveable { mutableIntStateOf(0) }
     Panel(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Tabs(listOf("agenda", "day", "month"), mode, { mode = it })
+            Tabs(listOf("agenda", "day", "week", "month"), mode, { mode = it })
             Spacer(Modifier.width(16.dp))
             T(
                 when (mode) {
                     0 -> "${Fmt.monthDay(start)} → ${Fmt.monthDay(Fmt.addDays(start, 13))}"
                     1 -> "${Fmt.dayLabel(start, now)} · ${Fmt.shortDate(start)}"
+                    2 -> "${Fmt.monthDay(start)} → ${Fmt.monthDay(Fmt.addDays(start, 6))}"
                     else -> Fmt.monthYear(start)
                 },
                 size = 18.sp, weight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f),
             )
-            T("‹", size = 22.sp, modifier = Modifier.clip(CircleShape).clickable { vm.shiftCalendar(when (mode) { 0 -> -14; 1 -> -1; else -> -30 }) }.padding(horizontal = 12.dp, vertical = 4.dp))
+            T("‹", size = 22.sp, modifier = Modifier.clip(CircleShape).clickable { vm.shiftCalendar(when (mode) { 0 -> -14; 1 -> -1; 2 -> -7; else -> -30 }) }.padding(horizontal = 12.dp, vertical = 4.dp))
             TButton("today") { vm.shiftCalendar(null) }
-            T("›", size = 22.sp, modifier = Modifier.clip(CircleShape).clickable { vm.shiftCalendar(when (mode) { 0 -> 14; 1 -> 1; else -> 30 }) }.padding(horizontal = 12.dp, vertical = 4.dp))
+            T("›", size = 22.sp, modifier = Modifier.clip(CircleShape).clickable { vm.shiftCalendar(when (mode) { 0 -> 14; 1 -> 1; 2 -> 7; else -> 30 }) }.padding(horizontal = 12.dp, vertical = 4.dp))
         }
         Spacer(Modifier.height(8.dp))
         if (perms["calendar"] != true) {
@@ -468,6 +469,12 @@ private fun CalendarListPanel(vm: LauncherViewModel, modifier: Modifier) {
         } else if (mode == 1) {
             DayTimeline(
                 events = events, dayStart = start, now = now, selected = selected,
+                onSelect = { vm.selectedEvent.value = it.instanceKey },
+                onCreate = { vm.newEvent(it) },
+            )
+        } else if (mode == 2) {
+            WeekTimeline(
+                events = events, start = start, now = now, selected = selected,
                 onSelect = { vm.selectedEvent.value = it.instanceKey },
                 onCreate = { vm.newEvent(it) },
             )
