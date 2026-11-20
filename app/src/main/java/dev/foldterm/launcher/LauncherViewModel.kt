@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.44.0" to listOf("`sms maya running late` pre-fills the message", "`contact add Sam 0400 123 456` creates a contact"),
     "0.43.0" to listOf("the big clock card shows your next event", "long-press the dock's drawer button to open the prompt"),
     "0.42.0" to listOf("pin a note to Home's note card; share notes to any app"),
     "0.41.0" to listOf("notification buttons (archive, mark as read, …) work from Alerts, Mail and Chat"),
@@ -680,7 +681,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun dial(number: String) = start(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(number)}")))
-    fun sms(number: String) = start(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${Uri.encode(number)}")))
+    fun sms(number: String, body: String? = null) = start(
+        Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${Uri.encode(number)}")).apply { if (!body.isNullOrBlank()) putExtra("sms_body", body) },
+    )
     fun email(address: String, subject: String? = null) = start(
         Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$address")).apply { if (subject != null) putExtra(Intent.EXTRA_SUBJECT, subject) },
     )

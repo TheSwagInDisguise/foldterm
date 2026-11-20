@@ -383,10 +383,30 @@ class Shell(private val vm: LauncherViewModel) {
             else findContact(rest)?.phone ?: error("no phone number for '$rest'")
             vm.dial(number)
         },
-        Cmd("sms", "sms <name|number>", "text a contact", setOf("text")) { _, rest ->
-            val number = if (rest.any { it.isDigit() } && rest.none { it.isLetter() }) rest
-            else findContact(rest)?.phone ?: error("no phone number for '$rest'")
-            vm.sms(number)
+        Cmd("sms", "sms <name|number> [message]", "text a contact", setOf("text")) { args, rest ->
+            require(args.isNotEmpty()) { "usage: sms maya running late" }
+            if (rest.any { it.isDigit() } && rest.none { it.isLetter() }) { vm.sms(rest); return@Cmd }
+            // whole text names a contact → no message; otherwise first word is the name, the rest the message
+            val whole = vm.contacts.value.firstOrNull { it.name.lowercase().startsWith(rest.lowercase()) }
+            if (whole != null) { vm.sms(whole.phone ?: error("no phone number for ${whole.name}")); return@Cmd }
+            val first = args[0]
+            val number = if (first.any { it.isDigit() } && first.none { it.isLetter() }) first
+            else findContact(first)?.phone ?: error("no phone number for '$first'")
+            vm.sms(number, rest.substringAfter(first).trim())
+        },
+        Cmd("contact", "contact add <name> <number>", "create a contact") { args, rest ->
+            require(args.firstOrNull() == "add") { "usage: contact add Sam 0400 123 456" }
+            val body = rest.substringAfter("add").trim()
+            val numberStart = body.indexOfFirst { it.isDigit() || it == '+' }.takeIf { it > 0 } ?: body.length
+            val name = body.substring(0, numberStart).trim()
+            val number = body.substring(numberStart).trim()
+            require(name.isNotEmpty()) { "usage: contact add Sam 0400 123 456" }
+            vm.start(
+                Intent(Intent.ACTION_INSERT, android.provider.ContactsContract.Contacts.CONTENT_URI)
+                    .putExtra(android.provider.ContactsContract.Intents.Insert.NAME, name)
+                    .apply { if (number.isNotEmpty()) putExtra(android.provider.ContactsContract.Intents.Insert.PHONE, number) },
+                "no contacts app",
+            )
         },
         Cmd("email", "email <name|address>", "compose an email") { _, rest ->
             val addr = if ('@' in rest || rest.isBlank()) rest else findContact(rest)?.email ?: error("no email for '$rest'")
