@@ -101,11 +101,11 @@ FoldTerm has no account, no analytics and no backend.
 Everything is built by GitHub Actions ([`build.yml`](.github/workflows/build.yml)):
 
 - **Every push and pull request** builds a release APK and attaches it to the workflow run as an artifact.
-- **New version on `main`**: when [`version.txt`](version.txt) holds a version with no release yet, CI builds, signs, tags `vX.Y.Z` and publishes a GitHub Release with the APK. Pushing a `v*` tag does the same. Without the signing secrets the build still passes, but the release is skipped (with a warning), because Android won't install an unsigned APK.
+- **New version on `main`**: when [`version.txt`](version.txt) holds a version with no release yet, CI builds, signs, tags `vX.Y.Z` and publishes a GitHub Release with the APK. Pushing a `v*` tag does the same. Every release is signed (see below).
 
 ### Signing key
 
-Add these repository secrets under **Settings → Secrets and variables → Actions**:
+Releases are signed with the key in [`signing/`](signing), so CI works with no setup. Anyone with access to this repo can sign APKs that install as updates. That's fine for a personal build. For a locked-down key, add these repository secrets; they take priority over the committed key:
 
 | Secret | Value |
 |---|---|
@@ -114,17 +114,7 @@ Add these repository secrets under **Settings → Secrets and variables → Acti
 | `KEY_ALIAS` | Key alias |
 | `KEY_PASSWORD` | Key password |
 
-To create a keystore once (keep it backed up, because every future update must be signed with the same key):
-
-```bash
-keytool -genkeypair -v -keystore foldterm.jks -keyalg RSA -keysize 4096 -validity 10000 -alias foldterm
-```
-
-```bash
-base64 -w0 foldterm.jks
-```
-
-On macOS use `base64 -i foldterm.jks`. Paste the output into `KEYSTORE_BASE64`.
+Switching keys means uninstalling the old build once, because Android only accepts updates signed with the same key.
 
 ### Cutting a release
 

@@ -53,25 +53,42 @@ jobs:
           echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
           echo "version $NAME (release: $RELEASE)"
 
-      - name: Decode signing keystore
+      - name: Signing key
         id: keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
+            # Repository secrets take priority when set.
             echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-            echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            {
+              echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.jks"
+              echo "SIGNING_STORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "SIGNING_KEY_ALIAS=$KEY_ALIAS"
+              echo "SIGNING_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Signing with the key from repository secrets."
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          elif [ -f signing/foldterm-release.jks ]; then
+            # Otherwise use the key committed in signing/.
+            prop() { grep "^$1=" signing/release.properties | cut -d= -f2-; }
+            {
+              echo "SIGNING_KEYSTORE_PATH=$GITHUB_WORKSPACE/signing/foldterm-release.jks"
+              echo "SIGNING_STORE_PASSWORD=$(prop storePassword)"
+              echo "SIGNING_KEY_ALIAS=$(prop keyAlias)"
+              echo "SIGNING_KEY_PASSWORD=$(prop keyPassword)"
+            } >> "$GITHUB_ENV"
+            echo "Signing with the key committed in signing/."
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::KEYSTORE_BASE64 secret is not set; the release APK will be unsigned."
+            echo "::warning::No signing key found; the APK will be unsigned."
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build release APK
-        env:
-          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew --no-daemon --stacktrace assembleRelease
 
       - name: Verify signature

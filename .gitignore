@@ -8,3 +8,4 @@ local.properties
 .DS_Store
 captures/
 .kotlin/
+!signing/foldterm-release.jks
