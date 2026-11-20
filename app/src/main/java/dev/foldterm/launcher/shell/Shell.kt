@@ -867,6 +867,14 @@ class Shell(private val vm: LauncherViewModel) {
             require(args.isNotEmpty()) { "usage: price btc" }
             args.take(5).forEach { vm.cryptoPrice(it) }
         },
+        Cmd("roll", "roll [NdS]", "roll dice, e.g. roll 2d6", setOf("dice")) { args, _ ->
+            val m = Regex("^(\\d*)d(\\d+)$").matchEntire(args.firstOrNull()?.lowercase() ?: "1d6") ?: error("usage: roll 2d6")
+            val n = m.groupValues[1].ifEmpty { "1" }.toInt().coerceIn(1, 20)
+            val s = m.groupValues[2].toInt().coerceIn(2, 1000)
+            val r = List(n) { kotlin.random.Random.nextInt(1, s + 1) }
+            vm.out("🎲 ${r.joinToString(" ")}${if (n > 1) "  = ${r.sum()}" else ""}", LineKind.ACCENT)
+        },
+        Cmd("flip", "flip", "flip a coin", setOf("coin")) { _, _ -> vm.out(if (kotlin.random.Random.nextBoolean()) "heads" else "tails", LineKind.ACCENT) },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

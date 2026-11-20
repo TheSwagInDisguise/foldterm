@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.57.0" to listOf("Tools pane: compass, bubble level, dice, coin and tally", "`roll 2d6`, `flip`"),
     "0.56.0" to listOf("`translate es good morning`", "`price btc` in your currency", "stopwatch card with laps for Home and cover"),
     "0.55.0" to listOf("Podcasts pane: subscribe to any podcast feed and play episodes (`podcast add <feed url>`)"),
     "0.54.0" to listOf("Share → FoldTerm: links go to the new Links pane, text becomes a note", "`save <url>` from the prompt; links card for Home and cover"),
