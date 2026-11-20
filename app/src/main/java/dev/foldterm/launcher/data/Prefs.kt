@@ -46,6 +46,22 @@ class Prefs(context: Context) {
         sp.edit().remove("hiddenSections").apply()
     }
 
+    /** Apps left out of badges and the Home summary. */
+    val mutedApps = MutableStateFlow(sp.getStringSet("mutedApps", emptySet())!!.toSet())
+    /** Apps always listed first in the notification centre. */
+    val pinnedApps = MutableStateFlow(sp.getStringSet("pinnedApps", emptySet())!!.toSet())
+
+    fun toggleMuted(pkg: String) {
+        val next = mutedApps.value.toMutableSet().apply { if (!add(pkg)) remove(pkg) }
+        mutedApps.value = next
+        sp.edit().putStringSet("mutedApps", next).apply()
+    }
+    fun togglePinned(pkg: String) {
+        val next = pinnedApps.value.toMutableSet().apply { if (!add(pkg)) remove(pkg) }
+        pinnedApps.value = next
+        sp.edit().putStringSet("pinnedApps", next).apply()
+    }
+
     /** Saved app pairs: name → (left app key, right app key). */
     val pairs = MutableStateFlow(loadPairs())
     val recent = MutableStateFlow(sp.getString("recent", "")!!.split('|').filter { it.isNotBlank() })

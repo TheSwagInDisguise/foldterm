@@ -259,13 +259,14 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
                 }
             }
             Divider()
-            val mail = notifs.count { !it.removed && it.kind == NotifKind.MAIL }
-            val chat = notifs.count { !it.removed && it.kind == NotifKind.CHAT }
+            val muted by vm.prefs.mutedApps.collectAsStateWithLifecycle()
+            val mail = notifs.count { !it.removed && it.kind == NotifKind.MAIL && it.pkg !in muted }
+            val chat = notifs.count { !it.removed && it.kind == NotifKind.CHAT && it.pkg !in muted }
             SummaryRow("@", "Inbox", t.accent2, onClick = { vm.go(if (chat > mail) Section.CHAT else Section.MAIL) }) {
                 if (!access) "Turn on notification access to see mail & chats here."
                 else if (mail + chat == 0) "Inbox zero. Nothing waiting."
                 else {
-                    val latest = notifs.firstOrNull { !it.removed && it.kind != NotifKind.OTHER }
+                    val latest = notifs.firstOrNull { !it.removed && it.kind != NotifKind.OTHER && it.pkg !in muted }
                     "$mail mail, $chat chat. ${latest?.let { "Latest: ${it.title} — ${it.text.take(80)}" } ?: ""}"
                 }
             }

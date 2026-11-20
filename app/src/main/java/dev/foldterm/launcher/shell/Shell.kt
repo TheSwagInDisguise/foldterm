@@ -341,8 +341,9 @@ class Shell(private val vm: LauncherViewModel) {
             if (items.isEmpty()) { vm.out(vm.newsStatus.value.ifBlank { "no stories yet" }, LineKind.DIM); vm.reloadNews() }
             items.forEachIndexed { i, it -> vm.out("  ${(i + 1).toString().padStart(2)}. ${it.title}  — ${it.source}") }
         },
-        Cmd("notifs", "notifs", "recent notifications", setOf("n", "inbox")) { _, _ ->
+        Cmd("notifs", "notifs [clear]", "recent notifications", setOf("n", "inbox")) { args, _ ->
             if (!vm.notifAccess.value) { vm.out("notification access is off — run `access`", LineKind.ERR); return@Cmd }
+            if (args.firstOrNull() == "clear") { vm.clearAllNotifications(); vm.out("cleared all notifications", LineKind.OK); return@Cmd }
             vm.notifications.value.filter { !it.removed }.take(15).forEach {
                 vm.out("  ${Fmt.ago(it.time).padStart(4)}  ${it.app}: ${it.title} — ${it.text.take(60)}")
             }

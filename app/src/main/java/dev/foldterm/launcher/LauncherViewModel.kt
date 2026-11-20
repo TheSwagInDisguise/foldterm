@@ -682,6 +682,19 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun clearAllNotifications() {
+        runCatching { NotifListener.instance?.cancelAllNotifications() }
+        NotificationStore.items.update { list -> list.map { it.copy(removed = true) } }
+    }
+
+    fun clearApp(pkg: String) {
+        NotificationStore.items.value.filter { it.pkg == pkg && !it.removed }.forEach { dismissNotif(it) }
+    }
+
+    /** Waiting notifications from apps that aren't muted. */
+    fun unreadCounts(list: List<Notif>, muted: Set<String>): Map<String, Int> =
+        list.filter { !it.removed && it.pkg !in muted }.groupingBy { it.pkg }.eachCount()
+
     fun openNotificationAccess() {
         if (!BuildConfig.NOTIFICATIONS) {
             out("lite edition: mail, chat and now playing need the full APK", LineKind.ERR)

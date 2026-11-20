@@ -110,6 +110,7 @@ import dev.foldterm.launcher.ui.screens.NewsScreen
 import dev.foldterm.launcher.ui.screens.NotesScreen
 import dev.foldterm.launcher.ui.screens.WeatherScreen
 import dev.foldterm.launcher.ui.screens.MediaScreen
+import dev.foldterm.launcher.ui.screens.NotificationCentre
 import dev.foldterm.launcher.ui.screens.WidgetsScreen
 import androidx.compose.ui.input.key.isAltPressed
 import dev.foldterm.launcher.ui.screens.PeopleScreen
@@ -288,6 +289,7 @@ private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Mo
             Section.NEWS -> NewsScreen(vm)
             Section.WEATHER -> WeatherScreen(vm)
             Section.MEDIA -> MediaScreen(vm)
+            Section.NOTIFS -> NotificationCentre(vm)
             Section.NOTES -> NotesScreen(vm)
             Section.WIDGETS -> WidgetsScreen(vm)
             Section.SETTINGS -> SettingsScreen(vm)
@@ -687,7 +689,8 @@ private fun DockIcon(vm: LauncherViewModel, app: AppEntry, tile: androidx.compos
     val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
     var menu by remember { mutableStateOf(false) }
     val notifs by vm.notifications.collectAsStateWithLifecycle()
-    val unread = remember(notifs, app.packageName) { notifs.count { !it.removed && it.pkg == app.packageName } }
+    val muted by vm.prefs.mutedApps.collectAsStateWithLifecycle()
+    val unread = remember(notifs, muted, app.packageName) { vm.unreadCounts(notifs, muted)[app.packageName] ?: 0 }
     Box {
         Box(
             Modifier.size(tile).clip(RoundedCornerShape(16.dp)).background(t.chip)
@@ -713,7 +716,8 @@ private fun DockIcon(vm: LauncherViewModel, app: AppEntry, tile: androidx.compos
 private fun AppDrawer(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val notifs by vm.notifications.collectAsStateWithLifecycle()
-    val unreadByPkg = remember(notifs) { notifs.filter { !it.removed }.groupingBy { it.pkg }.eachCount() }
+    val muted by vm.prefs.mutedApps.collectAsStateWithLifecycle()
+    val unreadByPkg = remember(notifs, muted) { vm.unreadCounts(notifs, muted) }
     val haptic = LocalHapticFeedback.current
     val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
