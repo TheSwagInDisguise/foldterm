@@ -47,6 +47,8 @@ The dock at the bottom holds your pinned apps, the app drawer and a **now playin
 
 **Gestures:** swipe up for the app drawer, and swipe down for the notification shade (or to close the drawer). On a hardware keyboard, <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> jumps between sections.
 
+**Split screen & app pairs:** long-press any app → **split with…**, then tap the second app; or type `split chrome | notes`. Save combos you use often with `pair save work chrome | slack`, then launch them from the prompt (`pair work`, or just type `work`) or from the chips at the top of the app drawer. **pop-up window** (`float <app>`) opens an app as a floating window where the device supports it. Split screen needs the unfolded inner screen.
+
 **Badges:** dock and drawer icons show how many notifications each app has waiting.
 
 **Look:** pick colour or **mono** icons (tinted to the theme, like an old phosphor screen), and use the theme's background or your own wallpaper.
@@ -88,7 +90,9 @@ Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you t
   torch [on|off] · shade
   note <text> · notes [filter]
   alias name=command · unalias name   e.g. alias wk=open slack
-  split <app> | <app>       two apps side by side (experimental)
+  split <left> | <right>    two apps side by side (inner screen)
+  pair save <name> <a> | <b> · pair <name> · pairs · pair rm <name>
+  float <app>               open in a pop-up window
   vol [0-100] · mute
   maps <place> · yt <query> · copy <text>
   settings [wifi|bt|display|battery|apps|sound]

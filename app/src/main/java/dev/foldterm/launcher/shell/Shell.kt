@@ -17,7 +17,7 @@ enum class LineKind { CMD, OUT, DIM, OK, ERR, ACCENT }
 
 data class Line(val text: String, val kind: LineKind)
 
-enum class SuggestionKind { COMMAND, APP, CONTACT, SECTION, WEB, EVENT, NOTE, MESSAGE, ALIAS }
+enum class SuggestionKind { COMMAND, APP, CONTACT, SECTION, WEB, EVENT, NOTE, MESSAGE, ALIAS, PAIR }
 
 data class Suggestion(
     val kind: SuggestionKind,
@@ -116,6 +116,26 @@ class Shell(private val vm: LauncherViewModel) {
                 "unhide" -> return rankApps(arg, vm.allApps.value.filter { it.key in vm.prefs.hidden.value }).take(limit).map { app ->
                     Suggestion(SuggestionKind.APP, "unhide ${app.label}", app.packageName, app) { execute("unhide ${app.label}") }
                 }
+                "float", "popup", "pop" -> return rankApps(arg).take(limit).map { app ->
+                    Suggestion(SuggestionKind.APP, "float ${app.label}", "pop-up window", app) { execute("float ${app.label}") }
+                }
+                "split", "sp" -> {
+                    // complete whichever side is being typed
+                    val left = arg.substringBefore('|').trim()
+                    val typingRight = '|' in arg
+                    val part = if (typingRight) arg.substringAfter('|').trim() else left
+                    return rankApps(part).filter { !it.isWork }.take(limit).map { app ->
+                        val label = if (typingRight) "split $left | ${app.label}" else "split ${app.label} | "
+                        Suggestion(SuggestionKind.APP, label, if (typingRight) "open side by side" else "then pick the right-hand app", app) {
+                            if (typingRight) {
+                                execute(label)
+                            } else {
+                                vm.input.value = label
+                            }
+                            Unit
+                        }
+                    }
+                }
                 "open", "launch", "run", "info", "uninstall", "hide" -> return rankApps(arg).take(limit).map { app ->
                     Suggestion(SuggestionKind.APP, "$first ${app.label}", app.packageName, app) { execute("$first ${app.label}") }
                 }
@@ -144,6 +164,9 @@ class Shell(private val vm: LauncherViewModel) {
             out += Suggestion(SuggestionKind.CONTACT, c.name, c.phone ?: c.email ?: c.company ?: "contact") {
                 vm.go(Section.PEOPLE); vm.selectContact(c); vm.shellOpen.value = false; vm.input.value = ""
             }
+        }
+        vm.prefs.pairs.value.filterKeys { score(it, q.removePrefix("pair ").trim()) >= 50 }.forEach { (k, v) ->
+            out += Suggestion(SuggestionKind.PAIR, "pair $k", "${vm.labelOf(v.first)} | ${vm.labelOf(v.second)}") { vm.launchPair(k) }
         }
         vm.prefs.aliases.value.filterKeys { it.startsWith(first) && arg.isEmpty() }.forEach { (k, v) ->
             out += Suggestion(SuggestionKind.ALIAS, k, "→ $v") { execute(k) }
@@ -176,7 +199,7 @@ class Shell(private val vm: LauncherViewModel) {
                 SuggestionKind.APP -> if (score(it.label, q) >= 80) 0 else 2
                 SuggestionKind.COMMAND -> 1
                 SuggestionKind.SECTION -> 1
-                SuggestionKind.ALIAS -> 0
+                SuggestionKind.ALIAS, SuggestionKind.PAIR -> 0
                 SuggestionKind.CONTACT -> 3
                 SuggestionKind.EVENT, SuggestionKind.NOTE, SuggestionKind.MESSAGE -> 4
                 SuggestionKind.WEB -> if (it.label.startsWith("open ")) 1 else 9
@@ -210,6 +233,23 @@ class Shell(private val vm: LauncherViewModel) {
     }
 
     private fun findApp(name: String): AppEntry? = rankApps(name).firstOrNull()
+
+    /** Parses "a | b" (or "a b" when both are one word) into two apps. */
+    private fun twoApps(rest: String, example: String): Pair<AppEntry, AppEntry> {
+        val pieces = if ('|' in rest) rest.split('|', limit = 2).map { it.trim() } else rest.trim().split(Regex("\\s+"), limit = 2)
+        val a = pieces.getOrElse(0) { "" }
+        val b = pieces.getOrElse(1) { "" }
+        require(a.isNotBlank() && b.isNotBlank()) { "usage: $example" }
+        val l = rankApps(a).firstOrNull { !it.isWork } ?: error("no app matching '$a'")
+        val r = rankApps(b).firstOrNull { !it.isWork } ?: error("no app matching '$b'")
+        return l to r
+    }
+
+    private fun listPairs() {
+        val p = vm.prefs.pairs.value
+        if (p.isEmpty()) vm.out("no pairs — `pair save work chrome | slack`", LineKind.DIM)
+        p.toSortedMap().forEach { (k, v) -> vm.out("  ${k.padEnd(10)} ${vm.labelOf(v.first)} | ${vm.labelOf(v.second)}") }
+    }
 
     private fun findContact(name: String): ContactSummary? = rankContacts(name).firstOrNull()
 
@@ -440,13 +480,31 @@ class Shell(private val vm: LauncherViewModel) {
             require(name in vm.prefs.aliases.value) { "no alias '$name'" }
             vm.prefs.setAlias(name, null); vm.out("removed $name", LineKind.OK)
         },
-        Cmd("split", "split <app> | <app>", "two apps side by side (experimental)") { _, rest ->
-            val pieces = if ('|' in rest) rest.split('|', limit = 2).map { it.trim() } else rest.split(Regex("\\s+"), limit = 2)
-            val a = pieces.getOrElse(0) { "" }
-            val b = pieces.getOrElse(1) { "" }
-            val first = findApp(a) ?: error("no app matching '$a' — usage: split chrome | notes")
-            val second = findApp(b) ?: error("no app matching '$b' — usage: split chrome | notes")
-            vm.out("splitting ${first.label} | ${second.label}", LineKind.OK); vm.split(first, second)
+        Cmd("split", "split <left> | <right>", "two apps side by side", setOf("sp")) { _, rest ->
+            val (l, r) = twoApps(rest, "split chrome | notes")
+            vm.split(l, r)
+        },
+        Cmd("pair", "pair <name> | save <name> <a> | <b> | rm <name>", "saved app pairs") { args, rest ->
+            when (args.firstOrNull()?.lowercase()) {
+                null, "ls", "list" -> listPairs()
+                "save", "add" -> {
+                    val name = args.getOrNull(1)?.lowercase() ?: error("usage: pair save work chrome | slack")
+                    val (l, r) = twoApps(rest.substringAfter(args[0]).trim().substringAfter(args[1]).trim(), "pair save work chrome | slack")
+                    vm.prefs.setPair(name, l.key to r.key)
+                    vm.out("saved pair '$name': ${l.label} | ${r.label} — run `pair $name`", LineKind.OK)
+                }
+                "rm", "del", "delete" -> {
+                    val name = args.getOrNull(1)?.lowercase() ?: error("usage: pair rm <name>")
+                    require(name in vm.prefs.pairs.value) { "no pair '$name'" }
+                    vm.prefs.setPair(name, null); vm.out("removed pair '$name'", LineKind.OK)
+                }
+                else -> vm.launchPair(args[0].lowercase())
+            }
+        },
+        Cmd("pairs", "pairs", "list saved app pairs") { _, _ -> listPairs() },
+        Cmd("float", "float <app>", "open an app in a pop-up window", setOf("popup", "pop")) { _, rest ->
+            val app = findApp(rest) ?: error("no app matching '$rest'")
+            vm.out("pop-up: ${app.label}", LineKind.OK); vm.popup(app)
         },
         Cmd("vol", "vol [0-100]", "media volume", setOf("volume")) { args, _ ->
             vm.volume(args.firstOrNull()?.removeSuffix("%")?.toIntOrNull())

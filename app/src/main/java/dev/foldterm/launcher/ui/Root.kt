@@ -499,6 +499,7 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
                         SuggestionKind.NOTE -> "txt"
                         SuggestionKind.MESSAGE -> "msg"
                         SuggestionKind.ALIAS -> "als"
+                        SuggestionKind.PAIR -> "par"
                     }
                     T(tag, color = t.dim, size = 12.sp, modifier = Modifier.width(40.dp))
                     if (s.app != null) {
@@ -680,6 +681,8 @@ private fun DockIcon(vm: LauncherViewModel, app: AppEntry, tile: androidx.compos
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { T("unpin ${app.label}") }, onClick = { menu = false; vm.unpinFromDock(app) })
+            DropdownMenuItem(text = { T("split with…") }, onClick = { menu = false; vm.splitPick.value = app; vm.drawerOpen.value = true })
+            DropdownMenuItem(text = { T("pop-up window") }, onClick = { menu = false; vm.popup(app) })
             DropdownMenuItem(text = { T("app info") }, onClick = { menu = false; vm.appsRepo.appInfo(app) })
         }
     }
@@ -696,23 +699,55 @@ private fun AppDrawer(vm: LauncherViewModel) {
     val haptic = LocalHapticFeedback.current
     val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
+    val splitPick by vm.splitPick.collectAsStateWithLifecycle()
+    val pairs by vm.prefs.pairs.collectAsStateWithLifecycle()
     var filter by remember { mutableStateOf("") }
     val shown = remember(apps, filter) {
         if (filter.isBlank()) apps else apps.filter { it.label.contains(filter, true) || it.packageName.contains(filter, true) }
     }
     Box(
         Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (t.dark) 0.5f else 0.2f))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { vm.drawerOpen.value = false },
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                vm.drawerOpen.value = false; vm.splitPick.value = null
+            },
         contentAlignment = Alignment.Center,
     ) {
         Panel(
             Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.86f).widthIn(max = 1100.dp)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
             title = "apps (${apps.size})",
-            trailing = { TButton("close") { vm.drawerOpen.value = false } },
+            trailing = { TButton("close") { vm.drawerOpen.value = false; vm.splitPick.value = null } },
         ) {
-            Field(filter, { filter = it }, "filter apps…", Modifier.fillMaxWidth(), onDone = {
-                shown.firstOrNull()?.let { vm.launch(it) }
+            val pick = splitPick
+            if (pick != null) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(t.selection).padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    T("◧ ", color = t.accent, size = 16.sp)
+                    T("${pick.label} | ?  — tap the app to open on the right", weight = FontWeight.SemiBold, modifier = Modifier.weight(1f), maxLines = 2)
+                    TButton("cancel") { vm.splitPick.value = null }
+                }
+                Spacer(Modifier.height(10.dp))
+            } else if (pairs.isNotEmpty()) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    items(pairs.keys.sorted()) { name ->
+                        val p = pairs.getValue(name)
+                        Row(
+                            Modifier.clip(RoundedCornerShape(50)).background(t.chip).border(1.dp, t.border, RoundedCornerShape(50))
+                                .clickable { vm.launchPair(name) }.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            T("◧ $name", color = t.accent, size = 13.sp, weight = FontWeight.Bold)
+                            T("  ${vm.labelOf(p.first)} | ${vm.labelOf(p.second)}", color = t.dim, size = 12.sp, maxLines = 1)
+                            T("✕", color = t.dim, size = 12.sp, modifier = Modifier.clip(RoundedCornerShape(50)).clickable { vm.prefs.setPair(name, null) }.padding(horizontal = 8.dp))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
+            Field(filter, { filter = it }, if (pick != null) "filter apps to pair with ${pick.label}…" else "filter apps…", Modifier.fillMaxWidth(), onDone = {
+                shown.firstOrNull()?.let { if (pick != null && pick.uniqueKey != it.uniqueKey) vm.split(pick, it) else vm.launch(it) }
             })
             Spacer(Modifier.height(12.dp))
             LazyVerticalGrid(columns = GridCells.Adaptive(104.dp), modifier = Modifier.fillMaxSize()) {
@@ -722,7 +757,13 @@ private fun AppDrawer(vm: LauncherViewModel) {
                     Box {
                         Column(
                             Modifier.padding(4.dp).clip(RoundedCornerShape(14.dp))
-                                .combinedClickable(onClick = { vm.launch(app) }, onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true })
+                                .combinedClickable(
+                                    onClick = {
+                                        val pick = vm.splitPick.value
+                                        if (pick != null && pick.uniqueKey != app.uniqueKey) vm.split(pick, app) else vm.launch(app)
+                                    },
+                                    onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true },
+                                )
                                 .padding(vertical = 10.dp, horizontal = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -735,6 +776,8 @@ private fun AppDrawer(vm: LauncherViewModel) {
                             if (app.isWork) T("work", color = t.accent2, size = 10.sp)
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(text = { T("split with…") }, onClick = { menu = false; filter = ""; vm.splitPick.value = app })
+                            DropdownMenuItem(text = { T("pop-up window") }, onClick = { menu = false; vm.popup(app) })
                             DropdownMenuItem(text = { T("pin to dock") }, onClick = { menu = false; vm.pinToDock(app) })
                             DropdownMenuItem(text = { T("app info") }, onClick = { menu = false; vm.appsRepo.appInfo(app) })
                             DropdownMenuItem(text = { T("hide") }, onClick = { menu = false; vm.setHidden(app, true) })

@@ -336,6 +336,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun onBack(): Boolean {
         return when {
             shellOpen.value -> { shellOpen.value = false; input.value = ""; true }
+            splitPick.value != null -> { splitPick.value = null; true }
             drawerOpen.value -> { drawerOpen.value = false; true }
             section.value != Section.HOME -> { section.value = Section.HOME; true }
             else -> false
@@ -524,16 +525,76 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ───────────────────────── misc device actions ─────────────────────────
 
-    /** Opens [a] then [b] beside it. Works where the device supports launching adjacent windows. */
-    fun split(a: AppEntry, b: AppEntry) {
-        launch(a)
-        viewModelScope.launch {
-            delay(700)
-            val i = ctx.packageManager.getLaunchIntentForPackage(b.packageName)
-            if (i == null) { out("can't open ${b.label} in split view", LineKind.ERR); return@launch }
-            i.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-            runCatching { ctx.startActivity(i) }.onFailure { out("split: ${it.message}", LineKind.ERR) }
+    /** App chosen as the first half of a split from the drawer; the next tap picks its partner. */
+    val splitPick = MutableStateFlow<AppEntry?>(null)
+
+    /** Split screen needs a wide window: the unfolded inner screen, not the cover screen. */
+    private fun splitAvailable(): Boolean {
+        val cfg = ctx.resources.configuration
+        if (cfg.smallestScreenWidthDp < 600 && cfg.screenWidthDp < 600) {
+            out("split screen needs the inner screen — unfold and try again", LineKind.ERR)
+            return false
         }
+        return true
+    }
+
+    private fun mainIntent(app: AppEntry): Intent =
+        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(app.component)
+            .addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+
+    /**
+     * Opens [left] and [right] side by side through [SplitActivity]: the home screen itself can't
+     * start split screen, but an ordinary activity can.
+     */
+    fun split(left: AppEntry, right: AppEntry) {
+        splitPick.value = null
+        drawerOpen.value = false
+        shellOpen.value = false
+        input.value = ""
+        if (!splitAvailable()) return
+        if (left.isWork || right.isWork) { out("split doesn't support work-profile apps yet", LineKind.ERR); return }
+        val i = Intent(ctx, SplitActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            .putExtra(SplitActivity.EXTRA_LEFT, mainIntent(left))
+            .putExtra(SplitActivity.EXTRA_RIGHT, mainIntent(right))
+        runCatching { ctx.startActivity(i) }.onFailure { out("split: ${it.message}", LineKind.ERR); return }
+        prefs.recordLaunch(left.key); prefs.recordLaunch(right.key)
+        out("split ${left.label} | ${right.label}", LineKind.OK)
+    }
+
+    fun splitKeys(leftKey: String, rightKey: String): Boolean {
+        val l = apps.value.firstOrNull { it.key == leftKey && !it.isWork }
+        val r = apps.value.firstOrNull { it.key == rightKey && !it.isWork }
+        if (l == null || r == null) { out("an app in that pair isn't installed any more", LineKind.ERR); return false }
+        split(l, r); return true
+    }
+
+    fun launchPair(name: String): Boolean {
+        val p = prefs.pairs.value[name] ?: run { out("no pair '$name'", LineKind.ERR); return false }
+        return splitKeys(p.first, p.second)
+    }
+
+    fun labelOf(key: String): String = allApps.value.firstOrNull { it.key == key }?.label ?: key.substringBefore('/')
+
+    /**
+     * Opens [app] as a floating window (Samsung "pop-up view" / freeform). Uses public launch bounds,
+     * plus the freeform windowing mode where the platform still accepts it.
+     */
+    fun popup(app: AppEntry) {
+        drawerOpen.value = false; shellOpen.value = false; input.value = ""
+        val dm = ctx.resources.displayMetrics
+        val w = (dm.widthPixels * 0.6f).toInt()
+        val h = (dm.heightPixels * 0.6f).toInt()
+        val left = (dm.widthPixels - w) / 2
+        val top = (dm.heightPixels - h) / 2
+        val opts = ActivityOptions.makeBasic().setLaunchBounds(android.graphics.Rect(left, top, left + w, top + h))
+        runCatching {
+            ActivityOptions::class.java.getMethod("setLaunchWindowingMode", Int::class.javaPrimitiveType).invoke(opts, 5)
+        }
+        runCatching {
+            ctx.startActivity(mainIntent(app).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK), opts.toBundle())
+            prefs.recordLaunch(app.key)
+        }.onFailure { out("pop-up: ${it.message}", LineKind.ERR) }
     }
 
     fun volume(percent: Int?) {

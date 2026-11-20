@@ -95,5 +95,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Invisible trampoline that puts two apps into split screen (see SplitActivity.kt). -->
+        <activity
+            android:name=".SplitActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="false"
+            android:resizeableActivity="true"
+            android:taskAffinity="dev.foldterm.split"
+            android:theme="@style/Theme.FoldTerm.Trampoline" />
+
     </application>
 </manifest>

@@ -6,4 +6,13 @@
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
         <item name="android:windowShowWallpaper">true</item>
     </style>
+
+    <!-- Plain opaque window: translucent activities aren't always allowed into split screen.
+         It is only visible for a moment while the two apps open. -->
+    <style name="Theme.FoldTerm.Trampoline" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/term_bg</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:statusBarColor">@color/term_bg</item>
+        <item name="android:navigationBarColor">@color/term_bg</item>
+    </style>
 </resources>

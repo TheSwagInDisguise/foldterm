@@ -28,6 +28,8 @@ class Prefs(context: Context) {
     val notes = MutableStateFlow(loadNotes())
     val aliases = MutableStateFlow(loadAliases())
     val widgets = MutableStateFlow(loadWidgets())
+    /** Saved app pairs: name → (left app key, right app key). */
+    val pairs = MutableStateFlow(loadPairs())
     val recent = MutableStateFlow(sp.getString("recent", "")!!.split('|').filter { it.isNotBlank() })
 
     fun setTheme(v: String) { theme.value = v; sp.edit().putString("theme", v).apply() }
@@ -92,6 +94,23 @@ class Prefs(context: Context) {
     private fun loadAliases(): Map<String, String> = runCatching {
         val o = JSONObject(sp.getString("aliases", "{}")!!)
         o.keys().asSequence().associateWith { o.getString(it) }
+    }.getOrDefault(emptyMap())
+
+    // ── app pairs ──
+    fun setPair(name: String, value: Pair<String, String>?) {
+        val next = pairs.value.toMutableMap().apply { if (value == null) remove(name) else put(name, value) }
+        pairs.value = next
+        val o = JSONObject()
+        next.forEach { (k, v) -> o.put(k, "${v.first}|${v.second}") }
+        sp.edit().putString("pairs", o.toString()).apply()
+    }
+
+    private fun loadPairs(): Map<String, Pair<String, String>> = runCatching {
+        val o = JSONObject(sp.getString("pairs", "{}")!!)
+        o.keys().asSequence().mapNotNull { k ->
+            val parts = o.getString(k).split('|')
+            if (parts.size == 2) k to (parts[0] to parts[1]) else null
+        }.toMap()
     }.getOrDefault(emptyMap())
 
     // ── widgets ──
