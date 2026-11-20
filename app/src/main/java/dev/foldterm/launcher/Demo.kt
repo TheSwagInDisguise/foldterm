@@ -26,6 +26,8 @@ import dev.foldterm.launcher.ui.Fmt
  */
 fun LauncherViewModel.loadDemo() {
     demo = true
+    clearLog()
+    out("foldterm — type `help`, or try: split chrome | notes · 100 usd in aud · brief", dev.foldterm.launcher.shell.LineKind.DIM)
     val day = Fmt.startOfDay(System.currentTimeMillis())
     val h = 3_600_000L
     val m = 60_000L

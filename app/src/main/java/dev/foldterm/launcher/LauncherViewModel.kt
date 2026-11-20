@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.49.0" to listOf("agenda rows always show the event title", "status bar icons match FoldTerm's theme"),
     "0.48.0" to listOf("Radio pane: internet radio (SomaFM presets, add your own streams); `radio defcon`, `radio stop`"),
     "0.47.0" to listOf("Games pane: serpent, mines and a typing sprint (`cd games`)"),
     "0.46.0" to listOf("`email maya lunch friday?` pre-fills the subject"),

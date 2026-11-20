@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
@@ -305,10 +306,12 @@ private fun AgendaRow(e: CalEvent, now: Long, compact: Boolean, selected: Boolea
         Spacer(Modifier.width(12.dp))
         if (compact) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                T(e.title, color = if (past) t.dim else t.fg, weight = FontWeight.SemiBold, size = 15.sp, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                // the title gets the room; the location is capped so it can't squeeze the title out
+                T(e.title, color = if (past) t.dim else t.fg, weight = FontWeight.SemiBold, size = 15.sp, maxLines = 1, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(10.dp))
                 val dur = if (e.allDay) "" else Fmt.duration(e.end - e.begin)
-                T(listOf(e.location, dur).filter { it.isNotBlank() }.joinToString(" · "), color = t.dim, size = 13.sp, maxLines = 1)
+                T(listOf(e.location.substringBefore(" · ").take(24), dur).filter { it.isNotBlank() }.joinToString(" · "), color = t.dim, size = 13.sp, maxLines = 1,
+                    modifier = Modifier.widthIn(max = 170.dp))
             }
         } else {
             Column(Modifier.weight(1f)) {

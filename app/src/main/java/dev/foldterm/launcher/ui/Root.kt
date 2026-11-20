@@ -145,6 +145,16 @@ fun LauncherRoot(vm: LauncherViewModel) {
     val textScale by vm.prefs.textScale.collectAsStateWithLifecycle()
     val reduceMotion by vm.prefs.reduceMotion.collectAsStateWithLifecycle()
     val baseDensity = LocalDensity.current
+    // status/navigation bar icons follow FoldTerm's theme, not the system's
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.SideEffect {
+        (view.context as? android.app.Activity)?.window?.let { w ->
+            androidx.core.view.WindowCompat.getInsetsController(w, view).apply {
+                isAppearanceLightStatusBars = !colors.dark
+                isAppearanceLightNavigationBars = !colors.dark
+            }
+        }
+    }
     TermTheme(colors) {
         CompositionLocalProvider(
             LocalFold provides fold, LocalIconTint provides parseHexColor(iconTint), LocalIconPack provides iconPack,
