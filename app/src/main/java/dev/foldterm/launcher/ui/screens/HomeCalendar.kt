@@ -346,15 +346,19 @@ private fun CalendarListPanel(vm: LauncherViewModel, modifier: Modifier) {
     var mode by rememberSaveable { mutableIntStateOf(0) }
     Panel(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Tabs(listOf("agenda", "month"), mode, { mode = it })
+            Tabs(listOf("agenda", "day", "month"), mode, { mode = it })
             Spacer(Modifier.width(16.dp))
             T(
-                if (mode == 0) "${Fmt.monthDay(start)} → ${Fmt.monthDay(Fmt.addDays(start, 13))}" else Fmt.monthYear(start),
+                when (mode) {
+                    0 -> "${Fmt.monthDay(start)} → ${Fmt.monthDay(Fmt.addDays(start, 13))}"
+                    1 -> "${Fmt.dayLabel(start, now)} · ${Fmt.shortDate(start)}"
+                    else -> Fmt.monthYear(start)
+                },
                 size = 18.sp, weight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f),
             )
-            T("‹", size = 22.sp, modifier = Modifier.clip(CircleShape).clickable { vm.shiftCalendar(if (mode == 0) -14 else -30) }.padding(horizontal = 12.dp, vertical = 4.dp))
+            T("‹", size = 22.sp, modifier = Modifier.clip(CircleShape).clickable { vm.shiftCalendar(when (mode) { 0 -> -14; 1 -> -1; else -> -30 }) }.padding(horizontal = 12.dp, vertical = 4.dp))
             TButton("today") { vm.shiftCalendar(null) }
-            T("›", size = 22.sp, modifier = Modifier.clip(CircleShape).clickable { vm.shiftCalendar(if (mode == 0) 14 else 30) }.padding(horizontal = 12.dp, vertical = 4.dp))
+            T("›", size = 22.sp, modifier = Modifier.clip(CircleShape).clickable { vm.shiftCalendar(when (mode) { 0 -> 14; 1 -> 1; else -> 30 }) }.padding(horizontal = 12.dp, vertical = 4.dp))
         }
         Spacer(Modifier.height(8.dp))
         if (perms["calendar"] != true) {
@@ -367,10 +371,16 @@ private fun CalendarListPanel(vm: LauncherViewModel, modifier: Modifier) {
             LazyColumn(Modifier.fillMaxSize()) {
                 agendaItems(windowed, now, compact = false, selected = selected) { vm.selectedEvent.value = it.instanceKey }
             }
+        } else if (mode == 1) {
+            DayTimeline(
+                events = events, dayStart = start, now = now, selected = selected,
+                onSelect = { vm.selectedEvent.value = it.instanceKey },
+                onCreate = { vm.newEvent(it) },
+            )
         } else {
             MonthGrid(events, start, now) { day ->
                 vm.setCalendarStart(day)
-                mode = 0
+                mode = 1
             }
         }
     }
