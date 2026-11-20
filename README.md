@@ -45,9 +45,9 @@ Agenda, inbox, people, weather and news in hinge-aware panes, with a command lin
 | Pane | What it does |
 |---|---|
 | **⌂ Home** | Cards you choose and arrange in two columns: happening now (join / directions), agenda, on-device summary, widgets, quick dial, inbox, now playing, weather, tasks, latest note, big clock, world clocks, most used apps, quick actions |
-| **» Chat / @ Mail** | Live feed from your messaging and mail apps' notifications, with inline reply, dismiss and snooze |
-| **! Alerts** | Notification centre: grouped by app, clear all or per app, reply, snooze (15m / 1h / 3h), copy, history, per-app **pin** and **mute** rules, and today's activity by hour |
-| **▦ Calendar** | **Agenda**, **day** timeline (overlaps side by side, *now* line, free gaps to tap), **week** grid and **month** views; quick-add field; event details; tasks with due dates and stars |
+| **» Chat / @ Mail** | Live feed from your messaging and mail apps' notifications, with inline reply, the app's own buttons (archive, mark as read…), dismiss and snooze |
+| **! Alerts** | Notification centre: grouped by app, clear all or per app, reply, notification buttons, snooze (15m / 1h / 3h), copy, history, per-app **pin** and **mute** rules, and today's activity by hour |
+| **▦ Calendar** | **Agenda**, **day** timeline (overlaps side by side, *now* line, free gaps to tap), **week** grid and **month** views; quick-add field; show/hide individual calendars; event details; tasks with due dates and stars, which also appear in the agenda |
 | **☺ People** | Contacts with photos, *in case of emergency* and favourites, companies and **groups** tabs, call / text / email / WhatsApp / share, vCard view, birthdays |
 | **▣ Photos** | Recent photos by day with **album** chips, and a swipeable in-launcher viewer with share and open |
 | **♫ Media** | Full player for whatever's playing: artwork, seek bar, skip and ±15/30 s jumps, switch between playing apps, audio output, volume |
@@ -85,9 +85,9 @@ The layout follows the hinge reported by Jetpack WindowManager:
 
 - **Themes:** `phosphor` (green on black), `amber`, `pastel`, `paper`, and **custom** (pick a base, two accents and a background); **auto theme** switches between a day and a night theme at sunrise and sunset.
 - **Icons:** colour, **mono** (tinted to the theme or any colour), or any standard Android **icon pack**, which shows how many of your apps it covers. Rename any app.
-- **Background & text:** the theme's backdrop or your wallpaper with four dim levels; four text sizes.
-- **Layouts:** choose and order sidebar sections, Home cards (and their column), and cover-screen cards.
-- **Prompt:** aliases (`alias work=dnd on; split slack | chrome`), command chaining with `;`, your choice of web search engine, and an optional **morning brief**.
+- **Background & text:** the theme's backdrop or your wallpaper with four dim levels; four text sizes; **reduced motion** (no glows or animations); an option to **hide the status bar**.
+- **Layouts:** choose and order sidebar sections, Home cards (and their column), the rows of the Home summary, and cover-screen cards.
+- **Prompt:** aliases (`alias work=dnd on; split slack | chrome`), command chaining with `;`, history expansion (`!!`, `!n`), `ans` for the last result, your choice of web search engine, optional key clicks, and an optional **morning brief**.
 - **Backup & restore:** save every setting (layouts, notes, tasks, pairs, aliases, folders…) to a file and restore it on another phone.
 
 ## The prompt
@@ -110,7 +110,8 @@ Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you t
   bright [0-100|auto] · dnd [on|off] · ring <normal|vibrate|silent> · rotate · torch · lock · shade
   split <left> | <right> · pair save <name> <a> | <b> · pair <name> · float <app>
   note <text> · notes · clocks add <city> · folder <name> · rename <app> = <name>
-  alias name=cmd; cmd · unalias name · history [clear]
+  alias name=cmd; cmd · unalias name · history [clear] · !! · !n · ans
+  ice · tip
   theme <phosphor|amber|pastel|paper|custom> · dock add|rm <app> · hide | unhide <app>
   settings [wifi|bt|display|battery|apps|sound] · screensaver · grant · access · default
   maps <place> · yt <query> · g <query> · copy <text> · crashlog · reload · version
