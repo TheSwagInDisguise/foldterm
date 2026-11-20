@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -172,14 +174,37 @@ fun nameColor(name: String): Color {
 }
 
 @Composable
-fun AsyncBitmap(key: Any, modifier: Modifier, loader: suspend () -> Bitmap?) {
+fun AsyncBitmap(key: Any, modifier: Modifier, colorFilter: ColorFilter? = null, loader: suspend () -> Bitmap?) {
     val bmp by produceState<Bitmap?>(null, key) { value = withContext(Dispatchers.IO) { loader() } }
     val b = bmp
     if (b != null) {
-        Image(b.asImageBitmap(), contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop)
+        Image(b.asImageBitmap(), contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop, colorFilter = colorFilter)
     } else {
         Box(modifier.background(LocalTerm.current.chip))
     }
+}
+
+/** Maps an icon to shades of one colour: luminance × tint. Gives the phosphor-screen look. */
+fun monoFilter(tint: Color): ColorFilter {
+    val r = tint.red; val g = tint.green; val b = tint.blue
+    return ColorFilter.colorMatrix(
+        ColorMatrix(
+            floatArrayOf(
+                0.299f * r, 0.587f * r, 0.114f * r, 0f, 0f,
+                0.299f * g, 0.587f * g, 0.114f * g, 0f, 0f,
+                0.299f * b, 0.587f * b, 0.114f * b, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f,
+            ),
+        ),
+    )
+}
+
+/** App icon honouring the "color" / "mono" icon style. */
+@Composable
+fun AppIcon(app: dev.foldterm.launcher.data.AppEntry, size: Dp, style: String, loader: suspend () -> Bitmap?) {
+    val t = LocalTerm.current
+    val filter = remember(style, t) { if (style == "mono") monoFilter(t.accent) else null }
+    AsyncBitmap(app.uniqueKey, Modifier.size(size), filter, loader)
 }
 
 @Composable

@@ -1,6 +1,8 @@
 package dev.foldterm.launcher.shell
 
 import android.content.Intent
+import android.provider.AlarmClock
+import android.provider.CalendarContract
 import android.provider.Settings
 import dev.foldterm.launcher.BuildConfig
 import dev.foldterm.launcher.LauncherViewModel
@@ -49,6 +51,11 @@ class Shell(private val vm: LauncherViewModel) {
         val line = raw.trim()
         if (line.isEmpty()) return
         vm.out("❯ $line", LineKind.CMD)
+        if (Calc.isExpression(line)) {
+            runCatching { vm.out("= ${Calc.format(Calc.eval(line))}", LineKind.ACCENT) }
+                .onFailure { vm.out("calc: ${it.message}", LineKind.ERR) }
+            return
+        }
         val parts = line.split(Regex("\\s+"))
         val name = parts[0].lowercase()
         val rest = line.substring(parts[0].length).trim()
@@ -74,6 +81,12 @@ class Shell(private val vm: LauncherViewModel) {
     fun suggest(input: String, limit: Int = 8): List<Suggestion> {
         val q = input.trim()
         if (q.isEmpty()) return emptyList()
+        if (Calc.isExpression(q)) {
+            val res = runCatching { Calc.format(Calc.eval(q)) }.getOrNull()
+            if (res != null) return listOf(
+                Suggestion(SuggestionKind.COMMAND, "= $res", "result · ⏎ to keep") { execute("= ${q.removePrefix("=").trim()}") },
+            )
+        }
         val first = q.substringBefore(' ').lowercase()
         val arg = q.substringAfter(' ', "").trim()
         val out = mutableListOf<Suggestion>()
@@ -81,7 +94,10 @@ class Shell(private val vm: LauncherViewModel) {
         // argument completion for a few commands
         if (arg.isNotEmpty() || q.endsWith(" ")) {
             when (first) {
-                "open", "launch", "run", "info", "uninstall" -> return rankApps(arg).take(limit).map { app ->
+                "unhide" -> return rankApps(arg, vm.allApps.value.filter { it.key in vm.prefs.hidden.value }).take(limit).map { app ->
+                    Suggestion(SuggestionKind.APP, "unhide ${app.label}", app.packageName, app) { execute("unhide ${app.label}") }
+                }
+                "open", "launch", "run", "info", "uninstall", "hide" -> return rankApps(arg).take(limit).map { app ->
                     Suggestion(SuggestionKind.APP, "$first ${app.label}", app.packageName, app) { execute("$first ${app.label}") }
                 }
                 "call", "sms", "text", "email", "mail" -> if (first != "mail" || arg.isNotEmpty()) {
@@ -123,10 +139,11 @@ class Shell(private val vm: LauncherViewModel) {
         }.take(limit)
     }
 
-    private fun rankApps(q: String): List<AppEntry> =
-        if (q.isBlank()) vm.apps.value.take(8)
-        else vm.apps.value.map { it to score(it.label, q) }.filter { it.second > 0 }
-            .sortedByDescending { it.second }.map { it.first }
+    private fun rankApps(q: String, pool: List<AppEntry> = vm.apps.value): List<AppEntry> =
+        if (q.isBlank()) pool.sortedByDescending { vm.usageOf(it) }.take(8)
+        else pool.map { it to score(it.label, q) }.filter { it.second > 0 }
+            .sortedWith(compareByDescending<Pair<AppEntry, Int>> { it.second }.thenByDescending { vm.usageOf(it.first) })
+            .map { it.first }
 
     private fun rankContacts(q: String): List<ContactSummary> =
         if (q.isBlank()) vm.contacts.value.filter { it.starred }.take(8)
@@ -297,6 +314,61 @@ class Shell(private val vm: LauncherViewModel) {
                 else -> vm.dockApps().forEach { vm.out("  ${it.label}") }
             }
         },
+        Cmd("=", "= <expression>", "calculator, e.g. = 2*(3+4)", setOf("calc")) { _, rest ->
+            val v = Calc.eval(rest)
+            vm.out("= ${Calc.format(v)}", LineKind.ACCENT)
+        },
+        Cmd("timer", "timer <5m|1h30m|90s> [label]", "start a countdown") { args, _ ->
+            val secs = When.duration(args.firstOrNull() ?: error("usage: timer 5m [label]")) ?: error("can't read '${args.first()}' — try 5m, 1h30m or 90s")
+            val label = args.drop(1).joinToString(" ")
+            val i = Intent(AlarmClock.ACTION_SET_TIMER)
+                .putExtra(AlarmClock.EXTRA_LENGTH, secs)
+                .putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+            if (label.isNotBlank()) i.putExtra(AlarmClock.EXTRA_MESSAGE, label)
+            if (vm.start(i, "no clock app can set timers")) vm.out("timer set: ${When.format(secs)}${if (label.isNotBlank()) " · $label" else ""}", LineKind.OK)
+        },
+        Cmd("alarm", "alarm <7:30|7pm> [label]", "set an alarm") { args, _ ->
+            val raw = args.take(2).joinToString("").takeIf { args.getOrNull(1)?.lowercase() in setOf("am", "pm") } ?: args.firstOrNull() ?: error("usage: alarm 7:30 [label]")
+            val (h, m) = When.clock(raw) ?: error("can't read '$raw' — try 7:30, 7pm or 19:30")
+            val label = args.drop(if (raw.length > (args.firstOrNull()?.length ?: 0)) 2 else 1).joinToString(" ")
+            val i = Intent(AlarmClock.ACTION_SET_ALARM)
+                .putExtra(AlarmClock.EXTRA_HOUR, h)
+                .putExtra(AlarmClock.EXTRA_MINUTES, m)
+                .putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+            if (label.isNotBlank()) i.putExtra(AlarmClock.EXTRA_MESSAGE, label)
+            if (vm.start(i, "no clock app can set alarms")) vm.out("alarm set for %02d:%02d%s".format(h, m, if (label.isNotBlank()) " · $label" else ""), LineKind.OK)
+        },
+        Cmd("event", "event [day] [time] <title>", "quick-add, e.g. event fri 3pm dentist") { args, _ ->
+            if (args.isEmpty()) { vm.newEvent(); return@Cmd }
+            val p = When.event(args)
+            val title = p.title.ifBlank { "New event" }
+            vm.out("→ ${Fmt.dayLabel(p.begin)} ${if (p.hasTime) Fmt.time(p.begin) else "${Fmt.time(p.begin)} (guessed)"} · $title", LineKind.DIM)
+            vm.start(
+                Intent(Intent.ACTION_INSERT, CalendarContract.Events.CONTENT_URI)
+                    .putExtra(CalendarContract.Events.TITLE, title)
+                    .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, p.begin)
+                    .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, p.begin + 3_600_000),
+                "no calendar app",
+            )
+        },
+        Cmd("torch", "torch [on|off]", "flashlight", setOf("flashlight", "light")) { args, _ ->
+            vm.setTorch(when (args.firstOrNull()?.lowercase()) { "on" -> true; "off" -> false; else -> null })
+        },
+        Cmd("hide", "hide <app>", "hide an app from the drawer") { _, rest ->
+            val app = findApp(rest) ?: error("no app matching '$rest'")
+            vm.setHidden(app, true); vm.out("hidden ${app.label} — `unhide ${app.label}` to undo", LineKind.OK)
+        },
+        Cmd("unhide", "unhide <app>", "show a hidden app again") { _, rest ->
+            val app = rankApps(rest, vm.allApps.value.filter { it.key in vm.prefs.hidden.value }).firstOrNull()
+                ?: error("no hidden app matching '$rest'")
+            vm.setHidden(app, false); vm.out("unhid ${app.label}", LineKind.OK)
+        },
+        Cmd("hidden", "hidden", "list hidden apps") { _, _ ->
+            val list = vm.allApps.value.filter { it.key in vm.prefs.hidden.value }
+            if (list.isEmpty()) vm.out("no hidden apps", LineKind.DIM)
+            list.forEach { vm.out("  ${it.label}") }
+        },
+        Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->
             vm.out("${Fmt.longDate(System.currentTimeMillis())}  ${Fmt.time(System.currentTimeMillis())}")

@@ -1,7 +1,10 @@
 package dev.foldterm.launcher
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.ActivityOptions
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.app.Application
 import android.app.PendingIntent
 import android.app.RemoteInput
@@ -84,7 +87,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val uiRequests = MutableSharedFlow<UiRequest>(extraBufferCapacity = 4)
 
     // data
+    /** Visible apps (hidden ones removed); [allApps] includes everything. */
     val apps = MutableStateFlow<List<AppEntry>>(emptyList())
+    val allApps = MutableStateFlow<List<AppEntry>>(emptyList())
+    val torchOn = MutableStateFlow(false)
     val events = MutableStateFlow<List<CalEvent>>(emptyList())
     val calStart = MutableStateFlow(Fmt.startOfDay(System.currentTimeMillis()))
     val selectedEvent = MutableStateFlow<String?>(null)
@@ -197,7 +203,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun loadApps() {
         viewModelScope.launch {
-            apps.value = withContext(Dispatchers.IO) { appsRepo.load() }
+            allApps.value = withContext(Dispatchers.IO) { appsRepo.load() }
+            applyHidden()
         }
     }
 
@@ -326,8 +333,24 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         out("denied: ${e.message}", LineKind.ERR); false
     }
 
+    private fun applyHidden() {
+        val hidden = prefs.hidden.value
+        apps.value = allApps.value.filter { it.key !in hidden }
+    }
+
+    fun setHidden(app: AppEntry, hide: Boolean) {
+        prefs.setHidden(app.key, hide)
+        applyHidden()
+    }
+
+    fun recentApps(limit: Int = 8): List<AppEntry> =
+        prefs.recent.value.mapNotNull { k -> apps.value.firstOrNull { it.key == k } }.take(limit)
+
+    fun usageOf(app: AppEntry): Int = prefs.usage.value[app.key] ?: 0
+
     fun launch(app: AppEntry) {
-        runCatching { appsRepo.launch(app) }.onFailure { out("failed to launch ${app.label}: ${it.message}", LineKind.ERR) }
+        runCatching { appsRepo.launch(app); prefs.recordLaunch(app.key) }
+            .onFailure { out("failed to launch ${app.label}: ${it.message}", LineKind.ERR) }
         shellOpen.value = false
         drawerOpen.value = false
         input.value = ""
@@ -409,6 +432,30 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun dismissNotif(n: Notif) {
         NotifListener.dismiss(n.key)
         NotificationStore.markRemoved(n.key)
+    }
+
+    /** Pulls down the notification shade (hidden but widely available API). */
+    fun expandNotifications() {
+        runCatching {
+            @SuppressLint("WrongConstant")
+            val sbm = ctx.getSystemService("statusbar")
+            Class.forName("android.app.StatusBarManager").getMethod("expandNotificationsPanel").invoke(sbm)
+        }.onFailure { out("couldn't open the notification shade on this device", LineKind.DIM) }
+    }
+
+    fun setTorch(on: Boolean?) {
+        val cm = ctx.getSystemService(CameraManager::class.java) ?: return
+        val id = cm.cameraIdList.firstOrNull { id ->
+            cm.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        } ?: run { out("no flashlight on this device", LineKind.ERR); return }
+        val next = on ?: !torchOn.value
+        try {
+            cm.setTorchMode(id, next)
+            torchOn.value = next
+            out("torch ${if (next) "on" else "off"}", LineKind.OK)
+        } catch (e: Exception) {
+            out("torch: ${e.message}", LineKind.ERR)
+        }
     }
 
     fun openNotificationAccess() {

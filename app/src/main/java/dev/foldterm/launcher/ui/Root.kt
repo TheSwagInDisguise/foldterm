@@ -1,7 +1,20 @@
 package dev.foldterm.launcher.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -129,10 +142,27 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
         if (!shellOpen) { focusManager.clearFocus(); keyboard?.hide() }
     }
 
+    val wallpaper by vm.prefs.showWallpaper.collectAsStateWithLifecycle()
     Box(
         Modifier
             .fillMaxSize()
-            .background(t.bg)
+            .background(if (wallpaper) t.bg.copy(alpha = if (t.dark) 0.55f else 0.35f) else t.bg)
+            .pointerInput(Unit) {
+                // swipe up: app drawer · swipe down: notification shade (or close the drawer)
+                var total = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { total = 0f },
+                    onDragEnd = {
+                        val threshold = 60.dp.toPx()
+                        when {
+                            vm.shellOpen.value -> Unit
+                            total < -threshold && !vm.drawerOpen.value -> vm.drawerOpen.value = true
+                            total > threshold && vm.drawerOpen.value -> vm.drawerOpen.value = false
+                            total > threshold -> vm.expandNotifications()
+                        }
+                    },
+                ) { _, dy -> total += dy }
+            }
             .drawBehind {
                 // soft colour washes, echoing the gradient of the mock-ups
                 drawRect(Brush.radialGradient(listOf(t.glowA, Color.Transparent), Offset(0f, 0f), size.maxDimension * 0.7f))
@@ -185,9 +215,13 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
                 }
             }
 
-            if (drawerOpen) AppDrawer(vm)
+            AnimatedVisibility(
+                visible = drawerOpen,
+                enter = fadeIn(tween(160)) + scaleIn(tween(200), initialScale = 0.96f),
+                exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.98f),
+            ) { AppDrawer(vm) }
 
-            if (shellOpen) {
+            AnimatedVisibility(visible = shellOpen, enter = fadeIn(tween(120)), exit = fadeOut(tween(100))) {
                 val topPad = with(density) { (promptBottom - rootTop).coerceAtLeast(0).toDp() }
                 Box(
                     Modifier.fillMaxSize().padding(top = topPad)
@@ -209,8 +243,15 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
 
 @Composable
 private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Modifier) {
-    Box(modifier) {
-        when (section) {
+    AnimatedContent(
+        targetState = section,
+        modifier = modifier,
+        transitionSpec = {
+            (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 40 }) togetherWith fadeOut(tween(90))
+        },
+        label = "section",
+    ) { s ->
+        when (s) {
             Section.HOME -> HomeScreen(vm)
             Section.CHAT -> MessagesScreen(vm, NotifKind.CHAT)
             Section.MAIL -> MessagesScreen(vm, NotifKind.MAIL)
@@ -370,6 +411,9 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
     val t = LocalTerm.current
     val text by vm.input.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
+    val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
+    val recentKeys by vm.prefs.recent.collectAsStateWithLifecycle()
+    val history by vm.history.collectAsStateWithLifecycle()
     val suggestions = remember(text, apps) { vm.shell.suggest(text) }
     val shape = RoundedCornerShape(22.dp)
     Column(
@@ -377,6 +421,40 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .padding(16.dp),
     ) {
+        if (text.isBlank()) {
+            // empty prompt: recent apps and recent commands, one tap away
+            val recent = remember(recentKeys, apps) { vm.recentApps() }
+            if (recent.isNotEmpty()) {
+                T("recent", color = t.dim, size = 12.sp)
+                Spacer(Modifier.height(6.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(recent, key = { it.uniqueKey }) { app ->
+                        Column(
+                            Modifier.width(76.dp).clip(RoundedCornerShape(14.dp)).clickable { vm.launch(app) }.padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            AppIcon(app, 40.dp, iconStyle) { vm.icon(app) }
+                            Spacer(Modifier.height(4.dp))
+                            T(app.label, size = 11.sp, maxLines = 1)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            if (history.isNotEmpty()) {
+                T("history", color = t.dim, size = 12.sp)
+                history.takeLast(4).asReversed().forEach { h ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .clickable { vm.input.value = h }.padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        T("↺ ", color = t.dim, size = 13.sp)
+                        T(h, size = 13.sp, maxLines = 1)
+                    }
+                }
+            }
+            if (recent.isNotEmpty() || history.isNotEmpty()) Divider()
+        }
         if (suggestions.isNotEmpty()) {
             suggestions.forEachIndexed { i, s ->
                 Row(
@@ -395,7 +473,7 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
                     }
                     T(tag, color = t.dim, size = 12.sp, modifier = Modifier.width(40.dp))
                     if (s.app != null) {
-                        AsyncBitmap(s.app.uniqueKey, Modifier.size(22.dp).clip(RoundedCornerShape(6.dp))) { vm.icon(s.app) }
+                        AppIcon(s.app, 22.dp, iconStyle) { vm.icon(s.app) }
                         Spacer(Modifier.width(10.dp))
                     }
                     T(s.label, weight = if (i == 0) FontWeight.Bold else FontWeight.Normal, maxLines = 1, modifier = Modifier.weight(1f))
@@ -552,14 +630,16 @@ private fun Dock(vm: LauncherViewModel, modifier: Modifier) {
 @Composable
 private fun DockIcon(vm: LauncherViewModel, app: AppEntry) {
     val t = LocalTerm.current
+    val haptic = LocalHapticFeedback.current
+    val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
     var menu by remember { mutableStateOf(false) }
     Box {
         Box(
             Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(t.chip)
-                .combinedClickable(onClick = { vm.launch(app) }, onLongClick = { menu = true }),
+                .combinedClickable(onClick = { vm.launch(app) }, onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true }),
             contentAlignment = Alignment.Center,
         ) {
-            AsyncBitmap(app.uniqueKey, Modifier.size(42.dp)) { vm.icon(app) }
+            AppIcon(app, 42.dp, iconStyle) { vm.icon(app) }
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { T("unpin ${app.label}") }, onClick = { menu = false; vm.unpinFromDock(app) })
@@ -574,6 +654,8 @@ private fun DockIcon(vm: LauncherViewModel, app: AppEntry) {
 @Composable
 private fun AppDrawer(vm: LauncherViewModel) {
     val t = LocalTerm.current
+    val haptic = LocalHapticFeedback.current
+    val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
     var filter by remember { mutableStateOf("") }
     val shown = remember(apps, filter) {
@@ -601,12 +683,12 @@ private fun AppDrawer(vm: LauncherViewModel) {
                     Box {
                         Column(
                             Modifier.padding(4.dp).clip(RoundedCornerShape(14.dp))
-                                .combinedClickable(onClick = { vm.launch(app) }, onLongClick = { menu = true })
+                                .combinedClickable(onClick = { vm.launch(app) }, onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true })
                                 .padding(vertical = 10.dp, horizontal = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Box {
-                                AsyncBitmap(app.uniqueKey, Modifier.size(52.dp)) { vm.icon(app) }
+                                AppIcon(app, 52.dp, iconStyle) { vm.icon(app) }
                             }
                             Spacer(Modifier.height(6.dp))
                             T(app.label, size = 12.sp, maxLines = 1)
@@ -615,6 +697,7 @@ private fun AppDrawer(vm: LauncherViewModel) {
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(text = { T("pin to dock") }, onClick = { menu = false; vm.pinToDock(app) })
                             DropdownMenuItem(text = { T("app info") }, onClick = { menu = false; vm.appsRepo.appInfo(app) })
+                            DropdownMenuItem(text = { T("hide") }, onClick = { menu = false; vm.setHidden(app, true) })
                             DropdownMenuItem(text = { T("uninstall") }, onClick = { menu = false; vm.start(vm.appsRepo.uninstallIntent(app)) })
                         }
                     }

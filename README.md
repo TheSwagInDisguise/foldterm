@@ -41,7 +41,11 @@ Agenda, inbox, people, weather and news in hinge-aware panes, with a command lin
 | **≡ News** | Headlines from any RSS or Atom feeds you choose |
 | **⚙ Settings** | Themes, permissions, default-launcher setup, units, location override, feeds |
 
-The dock at the bottom holds your pinned apps, the app drawer and a **now playing** media control. Long-press any app to pin, unpin, open app info or uninstall.
+The dock at the bottom holds your pinned apps, the app drawer and a **now playing** media control. Long-press any app to pin, unpin, hide, open app info or uninstall.
+
+**Gestures:** swipe up for the app drawer, and swipe down for the notification shade (or to close the drawer).
+
+**Look:** pick colour or **mono** icons (tinted to the theme, like an old phosphor screen), and use the theme's background or your own wallpaper.
 
 **Themes:** `phosphor` (green on black), `amber`, `pastel` (light and soft, like the original mock-ups) and `paper` (planner-style). Switch from Settings or with `theme <name>`.
 
@@ -72,12 +76,18 @@ Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you t
   play | pause | next | prev
   theme <phosphor|amber|pastel|paper>
   dock add|rm <app> | reset
+  hide | unhide <app> · hidden
+  = <expr>                  calculator (or just type 2*(3+4))
+  timer <5m|1h30m|90s> [label]
+  alarm <7:30|7pm> [label]
+  event [day] [time] <title>  e.g. event fri 3pm dentist
+  torch [on|off] · shade
   settings [wifi|bt|display|battery|apps|sound]
   grant · access · default  permissions · notification access · set as home app
   uptime · fold · date · clear · reload · version
 ```
 
-Anything that isn't a command or a match becomes a web search.
+Maths gets answered as you type. With the prompt empty, it shows your recent apps and commands. Apps you open often rank higher in results. Anything that isn't a command or a match becomes a web search.
 
 ## Install
 

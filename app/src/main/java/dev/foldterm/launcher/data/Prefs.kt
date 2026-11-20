@@ -17,6 +17,11 @@ class Prefs(context: Context) {
     val stepGoal = MutableStateFlow(sp.getInt("stepGoal", 8000))
     val userName = MutableStateFlow(sp.getString("name", "") ?: "")
     val manualLocation = MutableStateFlow(sp.getString("loc", "") ?: "")
+    val hidden = MutableStateFlow(sp.getStringSet("hidden", emptySet())!!.toSet())
+    val iconStyle = MutableStateFlow(sp.getString("iconStyle", "color") ?: "color")
+    val showWallpaper = MutableStateFlow(sp.getBoolean("wallpaper", false))
+    val usage = MutableStateFlow(loadUsage())
+    val recent = MutableStateFlow(sp.getString("recent", "")!!.split('|').filter { it.isNotBlank() })
 
     fun setTheme(v: String) { theme.value = v; sp.edit().putString("theme", v).apply() }
     fun setDock(v: List<String>?) {
@@ -33,6 +38,29 @@ class Prefs(context: Context) {
     fun setStepGoal(v: Int) { stepGoal.value = v; sp.edit().putInt("stepGoal", v).apply() }
     fun setUserName(v: String) { userName.value = v; sp.edit().putString("name", v).apply() }
     fun setManualLocation(v: String) { manualLocation.value = v; sp.edit().putString("loc", v).apply() }
+    fun setHidden(key: String, hide: Boolean) {
+        val next = hidden.value.toMutableSet().apply { if (hide) add(key) else remove(key) }
+        hidden.value = next
+        sp.edit().putStringSet("hidden", next).apply()
+    }
+    fun setIconStyle(v: String) { iconStyle.value = v; sp.edit().putString("iconStyle", v).apply() }
+    fun setShowWallpaper(v: Boolean) { showWallpaper.value = v; sp.edit().putBoolean("wallpaper", v).apply() }
+
+    /** Counts launches per app and keeps a most-recent-first list. */
+    fun recordLaunch(key: String) {
+        val u = usage.value.toMutableMap().apply { this[key] = (this[key] ?: 0) + 1 }
+        usage.value = u
+        recent.value = (listOf(key) + recent.value.filter { it != key }).take(12)
+        sp.edit()
+            .putString("usage", JSONObject(u.mapValues { it.value as Any }).toString())
+            .putString("recent", recent.value.joinToString("|"))
+            .apply()
+    }
+
+    private fun loadUsage(): Map<String, Int> = runCatching {
+        val o = JSONObject(sp.getString("usage", "{}")!!)
+        o.keys().asSequence().associateWith { o.getInt(it) }
+    }.getOrDefault(emptyMap())
 
     /** True exactly once, on the very first launch. */
     fun consumeFirstRun(): Boolean {

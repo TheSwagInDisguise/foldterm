@@ -516,6 +516,11 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val feedsPref by vm.prefs.feeds.collectAsStateWithLifecycle()
     val namePref by vm.prefs.userName.collectAsStateWithLifecycle()
     val locPref by vm.prefs.manualLocation.collectAsStateWithLifecycle()
+    val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
+    val wallpaper by vm.prefs.showWallpaper.collectAsStateWithLifecycle()
+    val hiddenKeys by vm.prefs.hidden.collectAsStateWithLifecycle()
+    val allApps by vm.allApps.collectAsStateWithLifecycle()
+    val hiddenApps = remember(hiddenKeys, allApps) { allApps.filter { it.key in hiddenKeys } }
     var feeds by remember(feedsPref) { mutableStateOf(feedsPref) }
     var name by remember(namePref) { mutableStateOf(namePref) }
     var loc by remember(locPref) { mutableStateOf(locPref) }
@@ -539,6 +544,26 @@ fun SettingsScreen(vm: LauncherViewModel) {
                                 Box(Modifier.size(12.dp).clip(CircleShape).background(th.accent))
                                 Spacer(Modifier.width(8.dp))
                                 T(th.name, color = th.fg, size = 13.sp)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("icons", modifier = Modifier.width(110.dp))
+                        Tabs(listOf("color", "mono"), if (iconStyle == "mono") 1 else 0, { vm.prefs.setIconStyle(if (it == 1) "mono" else "color") })
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("background", modifier = Modifier.width(110.dp))
+                        Tabs(listOf("theme", "wallpaper"), if (wallpaper) 1 else 0, { vm.prefs.setShowWallpaper(it == 1) })
+                    }
+                    if (hiddenApps.isNotEmpty()) {
+                        Divider()
+                        T("hidden apps", weight = FontWeight.Bold)
+                        hiddenApps.forEach { app ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                T(app.label, modifier = Modifier.weight(1f), maxLines = 1)
+                                TButton("unhide") { vm.setHidden(app, false) }
                             }
                         }
                     }
