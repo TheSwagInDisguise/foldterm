@@ -604,7 +604,9 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
                     }
                 }
             }
-            if (recent.isNotEmpty() || history.isNotEmpty()) Divider()
+            val tip = remember { dev.foldterm.launcher.shell.TIPS.random() }
+            T("tip: $tip", color = t.dim, size = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            Divider()
         }
         if (suggestions.isNotEmpty()) {
             suggestions.forEachIndexed { i, s ->

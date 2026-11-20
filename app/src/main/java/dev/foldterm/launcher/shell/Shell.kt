@@ -13,6 +13,30 @@ import dev.foldterm.launcher.data.NowPlayingStore
 import dev.foldterm.launcher.ui.Fmt
 import dev.foldterm.launcher.ui.Themes
 
+/** Short discoverability tips, shown in the empty prompt and by `tip`. */
+val TIPS = listOf(
+    "type a city after `time` or `weather`: time tokyo, weather paris",
+    "maths and conversions answer as you type: 18% of 240 is 240*0.18, 5 km in mi",
+    "`split chrome | notes` puts two apps side by side on the inner screen",
+    "`pair save work slack | chrome`, then just type `work`",
+    "`alias gm=dnd off; brief` turns a routine into one word",
+    "`focus 25m essay` hides distracting apps until the timer ends",
+    "`todo add pay rent fri !` sets a due day and a star",
+    "`event tomorrow 3pm dentist` opens a filled-in event",
+    "long-press an app for its shortcuts, split, pop-up, rename and folders",
+    "double-tap empty space can lock the screen (Settings → gestures)",
+    "swipe up for the drawer, down for notifications",
+    "the drawer sorts by most used and filters by folder or category",
+    "`!!` repeats the last command; `ans` reuses the last result",
+    "Settings → home layout lets you pick every card on Home",
+    "Settings → cover screen chooses what the folded phone shows",
+    "`neofetch` for a device banner, `ip` for addresses",
+    "`wa maya running late` opens WhatsApp with the message",
+    "tap 🎤 and say a command",
+    "`clocks add london` adds a world clock card",
+    "Settings → backup saves every setting to a file",
+)
+
 enum class LineKind { CMD, OUT, DIM, OK, ERR, ACCENT }
 
 data class Line(val text: String, val kind: LineKind)
@@ -79,14 +103,27 @@ class Shell(private val vm: LauncherViewModel) {
 
     fun commandNames(): List<String> = commands.map { it.name }
 
+    /** Last calculator result, usable as `ans`. */
+    private var lastAns = 0.0
+    private val ansWord = Regex("\\bans\\b")
+    private fun withAns(s: String) = if (ansWord.containsMatchIn(s)) s.replace(ansWord, "(${Calc.format(lastAns)})") else s
+
     fun execute(raw: String) {
-        val line = raw.trim()
+        var line = raw.trim()
         if (line.isEmpty()) return
+        // history expansion: !! = last command, !n = entry n from `history`
+        if (line == "!!" || Regex("^!\\d+$").matches(line)) {
+            val h = vm.history.value.filter { !it.startsWith("!") }
+            val pick = if (line == "!!") h.lastOrNull() else h.getOrNull(line.drop(1).toInt() - 1)
+            if (pick == null) { vm.out("$line: no such history entry", LineKind.ERR); return }
+            line = pick
+        }
+        val calcLine = withAns(line)
         vm.out("❯ $line", LineKind.CMD)
         Units.convert(line)?.let { vm.out("= $it", LineKind.ACCENT); return }
         Units.currencyQuery(line)?.let { (n, a, b) -> vm.convertCurrency(n, a, b); return }
-        if (Calc.isExpression(line)) {
-            runCatching { vm.out("= ${Calc.format(Calc.eval(line))}", LineKind.ACCENT) }
+        if (Calc.isExpression(calcLine)) {
+            runCatching { val v = Calc.eval(calcLine); lastAns = v; vm.out("= ${Calc.format(v)}", LineKind.ACCENT) }
                 .onFailure { vm.out("calc: ${it.message}", LineKind.ERR) }
             return
         }
@@ -147,8 +184,8 @@ class Shell(private val vm: LauncherViewModel) {
             val v = vm.convertCached(n, a, b)
             return listOf(Suggestion(SuggestionKind.COMMAND, if (v != null) "= %,.2f %s".format(v, b) else "convert $a → $b", if (v != null) "cached rates" else "⏎ fetches today's rates") { execute(q) })
         }
-        if (Calc.isExpression(q)) {
-            val res = runCatching { Calc.format(Calc.eval(q)) }.getOrNull()
+        if (Calc.isExpression(withAns(q))) {
+            val res = runCatching { Calc.format(Calc.eval(withAns(q))) }.getOrNull()
             if (res != null) return listOf(
                 Suggestion(SuggestionKind.COMMAND, "= $res", "result · ⏎ to keep") { execute("= ${q.removePrefix("=").trim()}") },
             )
@@ -657,7 +694,9 @@ class Shell(private val vm: LauncherViewModel) {
         },
         Cmd("history", "history [clear]", "recent prompt commands") { args, _ ->
             if (args.firstOrNull() == "clear") { vm.history.value = emptyList(); vm.prefs.saveHistory(emptyList()); vm.out("history cleared", LineKind.OK); return@Cmd }
-            vm.history.value.takeLast(25).forEachIndexed { i, h -> vm.out("  ${(i + 1).toString().padStart(3)}  $h") }
+            val h = vm.history.value.filter { !it.startsWith("!") }
+            h.withIndex().toList().takeLast(25).forEach { (i, cmd) -> vm.out("  ${(i + 1).toString().padStart(3)}  $cmd") }
+            vm.out("  !! repeats the last command · !n runs entry n", LineKind.DIM)
         },
         Cmd("rename", "rename <app> = <name>", "give an app a different label") { _, rest ->
             val target = rest.substringBefore('=').trim()
@@ -712,6 +751,12 @@ class Shell(private val vm: LauncherViewModel) {
             vm.out("choose “FoldTerm clock” in the screen saver list", LineKind.DIM)
             vm.start(Intent(android.provider.Settings.ACTION_DREAM_SETTINGS))
         },
+        Cmd("ice", "ice", "in-case-of-emergency contacts") { _, _ ->
+            val list = vm.contacts.value.filter { it.id in vm.prefs.ice.value }
+            if (list.isEmpty()) vm.out("no ICE contacts — People → contact → mark ICE", LineKind.DIM)
+            list.forEach { vm.out("  ${it.name.padEnd(22)} ${it.phone ?: "(no number)"}", LineKind.ERR) }
+        },
+        Cmd("tip", "tip", "a random FoldTerm tip", setOf("tips", "fortune")) { _, _ -> vm.out("tip: ${TIPS.random()}", LineKind.ACCENT) },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

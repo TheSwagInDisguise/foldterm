@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.38.0" to listOf("`!!` repeats the last command, `!n` runs history entry n", "`ans` reuses the last calculator result", "`ice` lists emergency contacts; `tip` for tips"),
     "0.37.0" to listOf("Calendar → calendars: hide calendars you don't want to see", "Settings → home layout → summary rows: choose what the summary shows"),
     "0.36.0" to listOf("🎤 in the prompt: say a command (\"timer 5 minutes\", \"open spotify\")", "quick actions card for Home and the cover screen"),
     "0.35.0" to listOf("FoldTerm clock screen saver: `screensaver`, then pick “FoldTerm clock”"),
@@ -1192,7 +1193,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         input.value = ""
-        if (line.isNotBlank()) {
+        if (line.isNotBlank() && !line.trim().startsWith("!")) {
             history.update { (it.filter { h -> h != line } + line).takeLast(100) }
             prefs.saveHistory(history.value)
         }
