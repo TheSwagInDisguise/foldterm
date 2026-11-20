@@ -97,6 +97,7 @@ val HOME_CARDS = listOf(
     "notes" to "latest note",
     "clock" to "big clock",
     "clocks" to "world clocks",
+    "apps" to "most used apps",
 )
 private val STRETCHY = setOf("agenda", "summary", "widgets", "tasks", "notes")
 
@@ -130,6 +131,7 @@ private fun HomeColumn(vm: LauncherViewModel, cards: List<String>, modifier: Mod
                 "weather" -> WeatherCard(vm)
                 "clock" -> ClockCard(vm)
                 "clocks" -> ClocksCard(vm)
+                "apps" -> AppsCard(vm)
             }
         }
         if (cards.none { it in STRETCHY }) Spacer(Modifier.weight(1f))
@@ -457,6 +459,11 @@ private fun CalendarListPanel(vm: LauncherViewModel, modifier: Modifier) {
             TButton("today") { vm.shiftCalendar(null) }
             T("›", size = 22.sp, modifier = Modifier.clip(CircleShape).clickable { vm.shiftCalendar(when (mode) { 0 -> 14; 1 -> 1; 2 -> 7; else -> 30 }) }.padding(horizontal = 12.dp, vertical = 4.dp))
         }
+        Spacer(Modifier.height(8.dp))
+        var quick by remember { mutableStateOf("") }
+        Field(quick, { quick = it }, "quick add · fri 3pm dentist", Modifier.fillMaxWidth(), onDone = {
+            if (quick.isNotBlank()) { vm.execShell("event $quick"); vm.shellOpen.value = false; quick = "" }
+        })
         Spacer(Modifier.height(8.dp))
         if (perms["calendar"] != true) {
             Empty("calendar permission denied", "grant") { vm.requestPermission("calendar") }

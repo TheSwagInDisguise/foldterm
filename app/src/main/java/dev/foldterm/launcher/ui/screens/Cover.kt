@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +54,7 @@ val COVER_CARDS = listOf(
     "tasks" to "tasks",
     "widgets" to "first widget",
     "clocks" to "world clocks",
+    "apps" to "most used apps",
 )
 
 /** Home for the folded phone: large type, big targets, one column, no nested scrolling. */
@@ -71,6 +73,7 @@ fun CoverHome(vm: LauncherViewModel) {
                 "tasks" -> TasksCard(vm)
                 "widgets" -> vm.prefs.widgets.value.firstOrNull()?.let { WidgetCard(vm, it, Modifier.fillMaxWidth()) }
                 "clocks" -> ClocksCard(vm)
+                "apps" -> AppsCard(vm)
             }
         }
         if (cards.isEmpty()) T("# no cover cards — choose some in Settings → cover screen", color = LocalTerm.current.dim)
@@ -96,6 +99,34 @@ private fun Label(text: String, extra: String? = null) {
         if (extra != null) T(" · $extra", color = t.dim, size = 12.sp)
     }
     Spacer(Modifier.height(6.dp))
+}
+
+/** Your eight most-launched apps as big tap targets. */
+@Composable
+internal fun AppsCard(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val apps by vm.apps.collectAsStateWithLifecycle()
+    val usage by vm.prefs.usage.collectAsStateWithLifecycle()
+    val style by vm.prefs.iconStyle.collectAsStateWithLifecycle()
+    val top = remember(apps, usage) { apps.filter { !it.isWork }.sortedByDescending { usage[it.key] ?: 0 }.take(8) }
+    Card {
+        Label("apps", "most used")
+        top.chunked(4).forEach { row ->
+            Row(Modifier.fillMaxWidth()) {
+                row.forEach { app ->
+                    Column(
+                        Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable { vm.launch(app) }.padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        dev.foldterm.launcher.ui.AppIcon(app, 46.dp, style) { vm.icon(app) }
+                        Spacer(Modifier.height(4.dp))
+                        T(app.label, size = 11.sp, maxLines = 1, color = t.fg)
+                    }
+                }
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
 }
 
 @Composable

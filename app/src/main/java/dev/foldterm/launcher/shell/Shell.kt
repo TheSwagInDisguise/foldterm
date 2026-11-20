@@ -655,6 +655,13 @@ class Shell(private val vm: LauncherViewModel) {
             val name = f.keys.firstOrNull { it.equals(rest, true) } ?: f.keys.firstOrNull { it.startsWith(rest.lowercase()) } ?: error("no folder '$rest'")
             vm.drawerFolder.value = name; vm.drawerOpen.value = true; vm.shellOpen.value = false
         },
+        Cmd("wa", "wa <name|number> [message]", "WhatsApp chat", setOf("whatsapp")) { args, rest ->
+            require(args.isNotEmpty()) { "usage: wa maya running late" }
+            val numeric = args[0].any { it.isDigit() } && args[0].none { it.isLetter() }
+            val number = if (numeric) args[0] else rankContacts(args[0]).firstOrNull()?.phone ?: error("no phone number for '${args[0]}'")
+            val msg = rest.substringAfter(args[0]).trim().ifBlank { null }
+            vm.whatsapp(number, msg)
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

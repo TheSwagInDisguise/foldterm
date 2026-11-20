@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.32.0" to listOf("Calendar quick-add field", "\"most used apps\" card for Home and the cover screen", "`wa <name>` and a WhatsApp button on contacts"),
     "0.31.0" to listOf("drawer folders: long-press an app → folders…; folder chips filter the drawer", "`folder <name>` opens the drawer at that folder"),
     "0.30.0" to listOf("text size: Settings → text size", "chain commands with ;  e.g. alias work=dnd on; split slack | chrome", "snooze notifications from Alerts, Mail and Chat"),
     "0.29.0" to listOf("notes: preview mode renders headings, bullets and tappable - [ ] checklists", "world clocks card: `clocks add tokyo`, then enable it in home layout or cover screen"),
@@ -647,6 +648,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             iconPacks.icon(pack, app.component)?.let { return it }
         }
         return appsRepo.icon(app)
+    }
+
+    /** Opens a WhatsApp chat with [number] (digits only, with country code if stored). */
+    fun whatsapp(number: String, text: String? = null) {
+        val digits = number.filter { it.isDigit() || it == '+' }.removePrefix("+")
+        openUrl("https://wa.me/$digits${text?.let { "?text=" + Uri.encode(it) } ?: ""}")
     }
 
     fun dial(number: String) = start(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(number)}")))

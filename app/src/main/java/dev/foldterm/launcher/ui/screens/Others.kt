@@ -355,6 +355,9 @@ private fun ContactDetailPanel(vm: LauncherViewModel, modifier: Modifier, ice: S
                     TButton("✉ message") { vm.sms(p) }
                 }
                 detail.emails.firstOrNull()?.let { e -> TButton("@ email") { vm.email(e) } }
+                if (vm.allApps.value.any { it.packageName == "com.whatsapp" || it.packageName == "com.whatsapp.w4b" }) {
+                    detail.phones.firstOrNull()?.let { p -> TButton("whatsapp") { vm.whatsapp(p) } }
+                }
                 TButton("share") { vm.start(vm.contactsRepo.shareIntent(s)) }
                 TButton(if (s.id in ice) "remove ICE" else "mark ICE") { vm.prefs.toggleIce(s.id) }
                 TButton("edit", primary = true) { vm.start(vm.contactsRepo.editIntent(s)) }
