@@ -63,7 +63,7 @@ Agenda, inbox, people, weather and news in hinge-aware panes, with a command lin
 
 ## Home, dock & drawer
 
-- **Dock:** pinned apps (sized to fit the screen), the app drawer button and a now-playing widget. Tap the widget for the Media pane, or its artwork to play/pause.
+- **Dock:** pinned apps (sized to fit the screen), the app drawer button (long-press it for the prompt) and a now-playing widget. Tap the widget for the Media pane, or its artwork to play/pause.
 - **App drawer:** a centred grid with unread **badges**; sort by a–z, most used or newest; filter by **folders** and Android categories; an A–Z jump strip; saved **app pairs** as chips. Long-press an app for its own **shortcuts**, *split with…*, *pop-up window*, pin to dock, rename, folders, app info, hide and uninstall.
 - **Gestures:** swipe up, swipe down and double-tap on empty space each run an action you choose: drawer, notification shade, prompt, alerts, media, **lock screen**, torch or nothing. On a keyboard: <kbd>/</kbd> opens the prompt, <kbd>Esc</kbd> closes it, <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> jumps between sections.
 - **Split screen & pop-ups:** `split <left> | <right>`, saved pairs (`pair save work chrome | slack`, then `pair work` or just `work`), and `float <app>` for a floating window where the device supports it. Split screen needs the unfolded inner screen.
