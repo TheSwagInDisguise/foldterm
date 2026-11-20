@@ -545,6 +545,9 @@ private fun Prompt(vm: LauncherViewModel, focus: FocusRequester, modifier: Modif
                 }
             },
         )
+        T("🎤", size = 16.sp, modifier = Modifier.clip(RoundedCornerShape(8.dp))
+            .clickable { vm.uiRequests.tryEmit(dev.foldterm.launcher.UiRequest.Voice) }.padding(horizontal = 6.dp, vertical = 4.dp))
+        Spacer(Modifier.width(4.dp))
         Box(
             Modifier.clip(RoundedCornerShape(6.dp)).background(t.chip).padding(horizontal = 8.dp, vertical = 2.dp),
         ) { T("/", color = t.dim, size = 13.sp) }

@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.36.0" to listOf("🎤 in the prompt: say a command (\"timer 5 minutes\", \"open spotify\")", "quick actions card for Home and the cover screen"),
     "0.35.0" to listOf("FoldTerm clock screen saver: `screensaver`, then pick “FoldTerm clock”"),
     "0.34.0" to listOf("type a setting's name (wallpaper, icon pack, bluetooth, developer options…) to jump to it"),
     "0.33.0" to listOf("auto theme: light by day, dark by night (Settings → theme)", "`neofetch` and `ip`"),
@@ -112,6 +113,7 @@ sealed interface UiRequest {
     data class Permissions(val perms: Array<String>) : UiRequest
     data object RoleHome : UiRequest
     data object ExportSettings : UiRequest
+    data object Voice : UiRequest
     data object ImportSettings : UiRequest
     /** Ask the user to allow binding a widget (system dialog). */
     data class BindWidget(val id: Int, val info: AppWidgetProviderInfo) : UiRequest
@@ -1155,6 +1157,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         shellOpen.value = true
         shell.execute(cmd)
     }
+    /** Spoken command from the mic button: shown in the prompt, then run. */
+    fun onVoice(text: String) {
+        if (text.isBlank()) return
+        shellOpen.value = true
+        input.value = text
+        submit()
+    }
+
     /** Highlighted suggestion (arrow keys); 0 = the top one. */
     val selIndex = MutableStateFlow(0)
 

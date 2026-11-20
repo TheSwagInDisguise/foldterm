@@ -27,6 +27,18 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { vm.onPermissionsResult() }
 
+    private val voiceLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+            r.data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { spoken ->
+                // "timer 5 minutes" → "timer 5m" so the shell's parsers understand speech
+                val normalised = spoken.lowercase()
+                    .replace(Regex("(\\d+) ?(minutes|minute|mins)"), "$1m")
+                    .replace(Regex("(\\d+) ?(hours|hour)"), "$1h")
+                    .replace(Regex("(\\d+) ?(seconds|second)"), "$1s")
+                vm.onVoice(normalised)
+            }
+        }
+
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let { vm.exportSettings(it) } }
 
@@ -69,6 +81,13 @@ class MainActivity : ComponentActivity() {
                             vm.onWidgetBound(req.id, false)
                         }
                     }
+                    UiRequest.Voice -> runCatching {
+                        voiceLauncher.launch(
+                            Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                                .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "say a command"),
+                        )
+                    }.onFailure { vm.out("no speech recogniser on this device", dev.foldterm.launcher.shell.LineKind.ERR) }
                     UiRequest.ExportSettings -> exportLauncher.launch("foldterm-settings.json")
                     UiRequest.ImportSettings -> importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
                     is UiRequest.ConfigureWidget -> {

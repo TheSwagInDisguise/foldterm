@@ -55,6 +55,7 @@ val COVER_CARDS = listOf(
     "widgets" to "first widget",
     "clocks" to "world clocks",
     "apps" to "most used apps",
+    "actions" to "quick actions",
 )
 
 /** Home for the folded phone: large type, big targets, one column, no nested scrolling. */
@@ -74,6 +75,7 @@ fun CoverHome(vm: LauncherViewModel) {
                 "widgets" -> vm.prefs.widgets.value.firstOrNull()?.let { WidgetCard(vm, it, Modifier.fillMaxWidth()) }
                 "clocks" -> ClocksCard(vm)
                 "apps" -> AppsCard(vm)
+                "actions" -> QuickActionsCard(vm)
             }
         }
         if (cards.isEmpty()) T("# no cover cards — choose some in Settings → cover screen", color = LocalTerm.current.dim)
@@ -297,6 +299,44 @@ internal fun TasksCard(vm: LauncherViewModel) {
                 T("[ ]", color = t.accent, weight = FontWeight.Bold)
                 Spacer(Modifier.width(10.dp))
                 T(task.text, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** One-tap toggles that matter most one-handed on the cover screen. */
+@Composable
+internal fun QuickActionsCard(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val torch by vm.torchOn.collectAsStateWithLifecycle()
+    val tick by vm.controlsTick.collectAsStateWithLifecycle()
+    val dnd = remember(tick) { vm.controls.dndOn() }
+    val vibrate = remember(tick) { vm.controls.ringerMode() == android.media.AudioManager.RINGER_MODE_VIBRATE }
+    val actions = listOf(
+        Triple("🔦", "torch", torch) to { vm.setTorch(null) },
+        Triple("⛔", "dnd", dnd) to { vm.control { vm.controls.setDnd(!dnd) } },
+        Triple("〰", "vibrate", vibrate) to {
+            vm.control { vm.controls.setRingerMode(if (vibrate) android.media.AudioManager.RINGER_MODE_NORMAL else android.media.AudioManager.RINGER_MODE_VIBRATE) }
+        },
+        Triple("⏲", "5 min", false) to { vm.execShell("timer 5m"); vm.shellOpen.value = false },
+        Triple("◉", "camera", false) to { vm.start(android.content.Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)) },
+        Triple("✱", "assistant", false) to { vm.start(android.content.Intent(android.content.Intent.ACTION_VOICE_COMMAND)) },
+    )
+    Card {
+        Label("quick actions")
+        actions.chunked(3).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (info, action) ->
+                    val (glyph, label, on) = info
+                    Column(
+                        Modifier.weight(1f).padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp))
+                            .background(if (on) t.button else t.chip).clickable { action() }.padding(vertical = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        T(glyph, size = 20.sp, color = if (on) t.onButton else t.fg)
+                        T(label, size = 11.sp, color = if (on) t.onButton else t.dim)
+                    }
+                }
             }
         }
     }
