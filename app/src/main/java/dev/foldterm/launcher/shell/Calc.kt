@@ -68,3 +68,26 @@ object Calc {
         }
     }
 }
+
+/** Plain-English percentages: "18% of 240", "15% off 80", "30 is what % of 120". */
+object Percent {
+    private val num = "(-?[\\d,]*\\.?\\d+)"
+    private val of = Regex("^$num\\s*%\\s*of\\s*$num$", RegexOption.IGNORE_CASE)
+    private val off = Regex("^$num\\s*%\\s*off\\s*$num$", RegexOption.IGNORE_CASE)
+    private val plus = Regex("^$num\\s*\\+\\s*$num\\s*%$", RegexOption.IGNORE_CASE)
+    private val whatPct = Regex("^(?:what\\s*%\\s*is\\s*)?$num\\s*(?:is\\s*what\\s*%\\s*)?of\\s*$num\\s*(?:in\\s*%)?$", RegexOption.IGNORE_CASE)
+
+    private fun d(s: String) = s.replace(",", "").toDouble()
+
+    /** Human-readable answer, or null when [q] isn't a percentage question. */
+    fun answer(q: String): String? {
+        val t = q.trim()
+        of.matchEntire(t)?.let { val (p, n) = it.destructured; return Calc.format(d(n) * d(p) / 100) }
+        off.matchEntire(t)?.let { val (p, n) = it.destructured; return "${Calc.format(d(n) * (1 - d(p) / 100))} (saves ${Calc.format(d(n) * d(p) / 100)})" }
+        plus.matchEntire(t)?.let { val (n, p) = it.destructured; return Calc.format(d(n) * (1 + d(p) / 100)) }
+        if (t.contains("what", true) || t.contains("%")) {
+            whatPct.matchEntire(t)?.let { val (a, b) = it.destructured; if (d(b) != 0.0) return "${Calc.format(d(a) / d(b) * 100)}%" }
+        }
+        return null
+    }
+}

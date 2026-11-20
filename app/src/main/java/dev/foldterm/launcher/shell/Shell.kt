@@ -120,6 +120,7 @@ class Shell(private val vm: LauncherViewModel) {
         }
         val calcLine = withAns(line)
         vm.out("❯ $line", LineKind.CMD)
+        Percent.answer(line)?.let { vm.out("= $it", LineKind.ACCENT); return }
         Units.convert(line)?.let { vm.out("= $it", LineKind.ACCENT); return }
         Units.currencyQuery(line)?.let { (n, a, b) -> vm.convertCurrency(n, a, b); return }
         if (Calc.isExpression(calcLine)) {
@@ -177,6 +178,9 @@ class Shell(private val vm: LauncherViewModel) {
     fun suggest(input: String, limit: Int = 8): List<Suggestion> {
         val q = input.trim()
         if (q.isEmpty()) return emptyList()
+        Percent.answer(q)?.let { r ->
+            return listOf(Suggestion(SuggestionKind.COMMAND, "= $r", "percentage · ⏎ to keep") { execute(q) })
+        }
         Units.convert(q)?.let { r ->
             return listOf(Suggestion(SuggestionKind.COMMAND, "= $r", "conversion · ⏎ to keep") { execute(q) })
         }
