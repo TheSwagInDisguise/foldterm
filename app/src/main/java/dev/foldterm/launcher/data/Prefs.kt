@@ -345,6 +345,10 @@ class Prefs(context: Context) {
         sp.edit().putString("newsSaved", a.toString()).apply()
     }
 
+    /** Text size multiplier on top of the system font scale. */
+    val textScale = MutableStateFlow(sp.getFloat("textScale", 1f))
+    fun setTextScale(v: Float) { textScale.value = v; sp.edit().putFloat("textScale", v).apply() }
+
     /** World clocks: IANA zone ids. */
     val clocks = MutableStateFlow(sp.getString("clocks", "")!!.split('|').filter { it.isNotBlank() })
     fun setClocks(v: List<String>) { clocks.value = v; sp.edit().putString("clocks", v.joinToString("|")).apply() }

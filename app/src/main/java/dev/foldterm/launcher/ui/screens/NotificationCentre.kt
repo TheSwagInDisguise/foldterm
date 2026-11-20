@@ -165,6 +165,13 @@ private fun DetailAndRules(vm: LauncherViewModel, modifier: Modifier) {
                         if (!sel.removed) TButton("dismiss") { vm.dismissNotif(sel) }
                         TButton("copy") { vm.copy(sel.body.ifBlank { sel.text }) }
                     }
+                    if (!sel.removed) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            T("snooze", color = t.dim, size = 12.sp)
+                            listOf(15 to "15m", 60 to "1h", 180 to "3h").forEach { (m, l) -> TButton(l) { vm.snoozeNotif(sel, m) } }
+                        }
+                    }
                     if (sel.replyAction != null && !sel.removed) {
                         Spacer(Modifier.height(10.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {

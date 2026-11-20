@@ -134,8 +134,13 @@ fun LauncherRoot(vm: LauncherViewModel) {
     val iconPack by vm.prefs.iconPack.collectAsStateWithLifecycle()
     val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
     val colors = remember(themeName, customSpec) { if (themeName == "custom") Themes.custom(customSpec) else Themes.byName(themeName) }
+    val textScale by vm.prefs.textScale.collectAsStateWithLifecycle()
+    val baseDensity = LocalDensity.current
     TermTheme(colors) {
-        CompositionLocalProvider(LocalFold provides fold, LocalIconTint provides parseHexColor(iconTint), LocalIconPack provides iconPack) {
+        CompositionLocalProvider(
+            LocalFold provides fold, LocalIconTint provides parseHexColor(iconTint), LocalIconPack provides iconPack,
+            LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density, baseDensity.fontScale * textScale),
+        ) {
             LauncherScaffold(vm)
         }
     }

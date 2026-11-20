@@ -170,6 +170,7 @@ fun MessagesScreen(vm: LauncherViewModel, kind: NotifKind) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TButton("open", primary = true) { vm.openNotif(sel) }
                     if (!sel.removed) TButton("dismiss") { vm.dismissNotif(sel) }
+                    if (!sel.removed) TButton("snooze 1h") { vm.snoozeNotif(sel, 60) }
                 }
                 Spacer(Modifier.height(16.dp))
                 T(sel.title.ifBlank { sel.app }, size = 22.sp, weight = FontWeight.Bold, maxLines = 3)
@@ -646,6 +647,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
     val engine by vm.prefs.searchEngine.collectAsStateWithLifecycle()
+    val textScale by vm.prefs.textScale.collectAsStateWithLifecycle()
     val morning by vm.prefs.morningBrief.collectAsStateWithLifecycle()
     val iconPack by vm.prefs.iconPack.collectAsStateWithLifecycle()
     var customTint by remember(iconTint) { mutableStateOf(if (iconTint.startsWith("#")) iconTint else "") }
@@ -730,6 +732,14 @@ fun SettingsScreen(vm: LauncherViewModel) {
                         Field(specDraft, { specDraft = it }, Themes.DEFAULT_CUSTOM, Modifier.fillMaxWidth(), onDone = { vm.prefs.setCustomTheme(specDraft.trim()) })
                     }
                     Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("text size", modifier = Modifier.width(110.dp))
+                        val scales = listOf(0.9f, 1f, 1.15f, 1.3f)
+                        Tabs(listOf("small", "normal", "large", "huge"), scales.indexOfFirst { kotlin.math.abs(it - textScale) < 0.01f }.coerceAtLeast(0), {
+                            vm.prefs.setTextScale(scales[it])
+                        })
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         T("icons", modifier = Modifier.width(110.dp))
                         Tabs(

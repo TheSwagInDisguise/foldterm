@@ -58,12 +58,18 @@ class Shell(private val vm: LauncherViewModel) {
                 .onFailure { vm.out("calc: ${it.message}", LineKind.ERR) }
             return
         }
+        // `a; b; c` runs each command in turn
+        if (line.contains("; ") && !line.lowercase().startsWith("alias ")) {
+            line.split("; ").map { it.trim() }.filter { it.isNotEmpty() }.forEach { execute(it) }
+            return
+        }
         // aliases expand once: `alias wk=open slack` makes `wk` run `open slack`
         val head = line.substringBefore(' ')
         vm.prefs.aliases.value[head.lowercase()]?.let { expansion ->
             val expanded = (expansion + " " + line.substringAfter(' ', "")).trim()
             vm.out("↳ $expanded", LineKind.DIM)
-            runCommand(expanded)
+            if (expanded.contains("; ")) expanded.split("; ").map { it.trim() }.filter { it.isNotEmpty() }.forEach { runCommand(it) }
+            else runCommand(expanded)
             return
         }
         runCommand(line)

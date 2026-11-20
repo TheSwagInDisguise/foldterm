@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.30.0" to listOf("text size: Settings → text size", "chain commands with ;  e.g. alias work=dnd on; split slack | chrome", "snooze notifications from Alerts, Mail and Chat"),
     "0.29.0" to listOf("notes: preview mode renders headings, bullets and tappable - [ ] checklists", "world clocks card: `clocks add tokyo`, then enable it in home layout or cover screen"),
     "0.28.0" to listOf("↑/↓ pick a prompt suggestion, ⏎ runs it", "choose your web search engine in Settings", "`brief`: a rundown of your day (also each morning)"),
     "0.27.0" to listOf("People → groups tab shows your contact labels", "News remembers what you've read; ☆ saves stories for later"),
@@ -721,6 +722,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) {
             out("reply failed: ${e.message}", LineKind.ERR); false
         }
+    }
+
+    fun snoozeNotif(n: Notif, minutes: Int) {
+        if (NotifListener.snooze(n.key, minutes * 60_000L)) {
+            NotificationStore.markRemoved(n.key)
+            out("snoozed ${n.title.ifBlank { n.app }} for ${Fmt.duration(minutes * 60_000L)}", LineKind.OK)
+        } else out("couldn't snooze (notification access off?)", LineKind.ERR)
     }
 
     fun dismissNotif(n: Notif) {

@@ -54,6 +54,9 @@ class NotifListener : NotificationListenerService() {
 
     companion object {
         @Volatile var instance: NotifListener? = null
+        /** Hides a notification and brings it back after [ms]. */
+        fun snooze(key: String, ms: Long): Boolean = runCatching { instance?.snoozeNotification(key, ms); instance != null }.getOrDefault(false)
+
         fun dismiss(key: String) {
             runCatching { instance?.cancelNotification(key) }
         }
