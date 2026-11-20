@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.58.0" to listOf("Voice memos pane: record, play, share and delete (`memo`)"),
     "0.57.0" to listOf("Tools pane: compass, bubble level, dice, coin and tally", "`roll 2d6`, `flip`"),
     "0.56.0" to listOf("`translate es good morning`", "`price btc` in your currency", "stopwatch card with laps for Home and cover"),
     "0.55.0" to listOf("Podcasts pane: subscribe to any podcast feed and play episodes (`podcast add <feed url>`)"),
@@ -250,6 +251,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         radio.release()
+        memos.release()
         appsRepo.unregister(appsCallback)
         stepStop?.invoke()
     }
@@ -664,6 +666,22 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val iconPacks = dev.foldterm.launcher.data.IconPacks(app)
     val controls = dev.foldterm.launcher.data.Controls(app)
     val radio = dev.foldterm.launcher.data.Radio(app)
+    val memos = dev.foldterm.launcher.data.Memos(app)
+
+    fun startMemo() {
+        if (ctx.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            uiRequests.tryEmit(UiRequest.Permissions(arrayOf(Manifest.permission.RECORD_AUDIO)))
+            out("allow the microphone, then tap record again", LineKind.DIM)
+            return
+        }
+        if (radio.isPlaying()) radio.pause()
+        memos.start()?.let { out("recording failed: $it", LineKind.ERR) }
+    }
+
+    fun shareMemo(m: dev.foldterm.launcher.data.Memo) {
+        val uri = androidx.core.content.FileProvider.getUriForFile(ctx, ctx.packageName + ".files", m.file)
+        start(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("audio/mp4").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "share memo"))
+    }
     val habits = MutableStateFlow(prefs.loadHabits())
     val episodes = MutableStateFlow<List<dev.foldterm.launcher.data.Episode>>(emptyList())
     val podcastStatus = MutableStateFlow("")

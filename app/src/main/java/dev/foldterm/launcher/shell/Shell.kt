@@ -875,6 +875,7 @@ class Shell(private val vm: LauncherViewModel) {
             vm.out("🎲 ${r.joinToString(" ")}${if (n > 1) "  = ${r.sum()}" else ""}", LineKind.ACCENT)
         },
         Cmd("flip", "flip", "flip a coin", setOf("coin")) { _, _ -> vm.out(if (kotlin.random.Random.nextBoolean()) "heads" else "tails", LineKind.ACCENT) },
+        Cmd("memo", "memo", "voice memos (record from the pane)", setOf("record", "voice")) { _, _ -> vm.go(Section.MEMOS); vm.shellOpen.value = false },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
