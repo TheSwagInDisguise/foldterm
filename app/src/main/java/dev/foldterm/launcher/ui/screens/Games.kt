@@ -341,4 +341,3 @@ private fun Typer(vm: LauncherViewModel) {
     }
 }
 
-@Suppress("unused") private val keepColor = Color.Unspecified

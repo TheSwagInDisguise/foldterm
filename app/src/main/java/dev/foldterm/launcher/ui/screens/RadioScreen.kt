@@ -91,4 +91,3 @@ fun RadioScreen(vm: LauncherViewModel) {
     }
 }
 
-@Suppress("unused") private val keep = Box::class
