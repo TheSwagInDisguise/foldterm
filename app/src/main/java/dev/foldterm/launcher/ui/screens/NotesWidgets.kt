@@ -180,7 +180,7 @@ fun WidgetsScreen(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun WidgetCard(vm: LauncherViewModel, slot: WidgetSlot, modifier: Modifier) {
+internal fun WidgetCard(vm: LauncherViewModel, slot: WidgetSlot, modifier: Modifier) {
     val t = LocalTerm.current
     val info = remember(slot.id) { vm.widgetsHost.info(slot.id) }
     val density = LocalDensity.current

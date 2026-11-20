@@ -55,6 +55,12 @@ class Prefs(context: Context) {
     fun setCoverMode(v: Boolean) { coverMode.value = v; sp.edit().putBoolean("coverMode", v).apply() }
     fun setCoverCards(v: List<String>) { coverCards.value = v; sp.edit().putString("coverCards", v.joinToString("|")).apply() }
 
+    /** Unfolded Home cards in order, each "id:L" or "id:R" for its column. */
+    val homeLayout = MutableStateFlow(
+        (sp.getString("homeLayout", null) ?: "happening:L|agenda:L|summary:R").split('|').filter { ':' in it },
+    )
+    fun setHomeLayout(v: List<String>) { homeLayout.value = v; sp.edit().putString("homeLayout", v.joinToString("|")).apply() }
+
     /** Apps left out of badges and the Home summary. */
     val mutedApps = MutableStateFlow(sp.getStringSet("mutedApps", emptySet())!!.toSet())
     /** Apps always listed first in the notification centre. */

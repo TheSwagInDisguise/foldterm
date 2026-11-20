@@ -533,6 +533,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val hiddenKeys by vm.prefs.hidden.collectAsStateWithLifecycle()
     val sectionOrder by vm.prefs.sectionOrder.collectAsStateWithLifecycle()
     val coverMode by vm.prefs.coverMode.collectAsStateWithLifecycle()
+    val homeLayout by vm.prefs.homeLayout.collectAsStateWithLifecycle()
     val coverCards by vm.prefs.coverCards.collectAsStateWithLifecycle()
     val hiddenSections by vm.prefs.hiddenSections.collectAsStateWithLifecycle()
     val allApps by vm.allApps.collectAsStateWithLifecycle()
@@ -647,6 +648,53 @@ fun SettingsScreen(vm: LauncherViewModel) {
                             }
                         }
                         Spacer(Modifier.height(4.dp))
+                    }
+                    Divider()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("home layout", weight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        T("reset", color = t.dim, size = 12.sp, modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                            .clickable { vm.prefs.setHomeLayout(listOf("happening:L", "agenda:L", "summary:R")) }.padding(6.dp))
+                    }
+                    T("cards on the unfolded Home: order, column (L/R) and on/off", color = t.dim, size = 12.sp)
+                    Spacer(Modifier.height(6.dp))
+                    run {
+                        val enabled = homeLayout
+                        val ids = enabled.map { it.substringBefore(':') }
+                        val rows = ids.mapNotNull { id -> HOME_CARDS.firstOrNull { it.first == id } } + HOME_CARDS.filter { it.first !in ids }
+                        rows.forEach { (id, label) ->
+                            val idx = ids.indexOf(id)
+                            val on = idx >= 0
+                            val col = if (on) enabled[idx].substringAfter(':') else "R"
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (on) t.panelAlt else Color.Transparent)
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                T(label, color = if (on) t.fg else t.dim, modifier = Modifier.weight(1f), maxLines = 1)
+                                if (on) {
+                                    T("↑", size = 16.sp, color = if (idx > 0) t.fg else t.dim.copy(alpha = 0.3f),
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = idx > 0) {
+                                            vm.prefs.setHomeLayout(enabled.toMutableList().apply { add(idx - 1, removeAt(idx)) })
+                                        }.padding(horizontal = 8.dp, vertical = 6.dp))
+                                    T("↓", size = 16.sp, color = if (idx < enabled.lastIndex) t.fg else t.dim.copy(alpha = 0.3f),
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = idx < enabled.lastIndex) {
+                                            vm.prefs.setHomeLayout(enabled.toMutableList().apply { add(idx + 1, removeAt(idx)) })
+                                        }.padding(horizontal = 8.dp, vertical = 6.dp))
+                                    T(col, size = 13.sp, weight = FontWeight.Bold, color = t.accent2,
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, t.border, RoundedCornerShape(8.dp))
+                                            .clickable { vm.prefs.setHomeLayout(enabled.toMutableList().apply { set(idx, "$id:${if (col == "L") "R" else "L"}") }) }
+                                            .padding(horizontal = 10.dp, vertical = 4.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                }
+                                Box(
+                                    Modifier.width(56.dp).clip(RoundedCornerShape(50)).background(if (on) t.button else t.chip)
+                                        .clickable { vm.prefs.setHomeLayout(if (on) enabled.filterIndexed { i, _ -> i != idx } else enabled + "$id:R") }
+                                        .padding(vertical = 5.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) { T(if (on) "on" else "off", color = if (on) t.onButton else t.dim, size = 12.sp, weight = FontWeight.Bold) }
+                            }
+                            Spacer(Modifier.height(4.dp))
+                        }
                     }
                     Divider()
                     T("cover screen", weight = FontWeight.Bold)

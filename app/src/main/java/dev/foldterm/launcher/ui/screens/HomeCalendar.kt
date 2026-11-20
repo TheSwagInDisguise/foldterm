@@ -68,17 +68,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         if (maxWidth < 640.dp && coverMode) {
             CoverHome(vm)
         } else if (maxWidth >= 640.dp) {
-            TwoPane(
-                Modifier.fillMaxSize(),
-                left = { m ->
-                    Column(m) {
-                        HappeningNow(vm)
-                        Spacer(Modifier.height(14.dp))
-                        AgendaPanel(vm, Modifier.weight(1f).fillMaxWidth())
-                    }
-                },
-                right = { m -> SummaryPanel(vm, m) },
-            )
+            ConfigurableHome(vm)
         } else {
             // Narrow (cover screen): no outer scroll. Each panel scrolls itself, because nesting
             // scrollable containers crashes Compose.
@@ -90,6 +80,80 @@ fun HomeScreen(vm: LauncherViewModel) {
                 AgendaPanel(vm, Modifier.fillMaxWidth().weight(0.55f))
             }
         }
+    }
+}
+
+/** Cards the unfolded Home can show, with their Settings labels. Scrolling cards share leftover height. */
+val HOME_CARDS = listOf(
+    "happening" to "happening now",
+    "agenda" to "agenda",
+    "summary" to "summary",
+    "widgets" to "widgets",
+    "dial" to "quick dial",
+    "inbox" to "inbox",
+    "media" to "now playing",
+    "weather" to "weather",
+    "tasks" to "tasks",
+    "notes" to "latest note",
+    "clock" to "big clock",
+)
+private val STRETCHY = setOf("agenda", "summary", "widgets", "tasks", "notes")
+
+@Composable
+private fun ConfigurableHome(vm: LauncherViewModel) {
+    val layout by vm.prefs.homeLayout.collectAsStateWithLifecycle()
+    val left = layout.filter { it.endsWith(":L") }.map { it.substringBefore(':') }
+    val right = layout.filter { it.endsWith(":R") }.map { it.substringBefore(':') }
+    when {
+        left.isEmpty() && right.isEmpty() -> Panel(Modifier.fillMaxSize()) { Empty("Home is empty — add cards in Settings → home layout") }
+        left.isEmpty() || right.isEmpty() -> HomeColumn(vm, left + right, Modifier.fillMaxSize())
+        else -> TwoPane(Modifier.fillMaxSize(), left = { m -> HomeColumn(vm, left, m) }, right = { m -> HomeColumn(vm, right, m) })
+    }
+}
+
+@Composable
+private fun HomeColumn(vm: LauncherViewModel, cards: List<String>, modifier: Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        cards.forEach { id ->
+            val stretch = if (id in STRETCHY) Modifier.fillMaxWidth().weight(1f) else Modifier.fillMaxWidth()
+            when (id) {
+                "happening" -> HappeningNow(vm)
+                "agenda" -> AgendaPanel(vm, stretch)
+                "summary" -> SummaryPanel(vm, stretch)
+                "widgets" -> HomeWidgets(vm, stretch)
+                "tasks" -> TasksPanel(vm, stretch)
+                "notes" -> LatestNote(vm, stretch)
+                "dial" -> DialCard(vm)
+                "inbox" -> InboxCard(vm)
+                "media" -> MediaCard(vm)
+                "weather" -> WeatherCard(vm)
+                "clock" -> ClockCard(vm)
+            }
+        }
+        if (cards.none { it in STRETCHY }) Spacer(Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun HomeWidgets(vm: LauncherViewModel, modifier: Modifier) {
+    val slots by vm.prefs.widgets.collectAsStateWithLifecycle()
+    Panel(modifier, title = "widgets", trailing = { T("edit ↗", color = LocalTerm.current.dim, size = 12.sp, modifier = Modifier.clickable { vm.go(Section.WIDGETS) }) }) {
+        if (slots.isEmpty()) { Empty("no widgets yet", "+ add widget") { vm.go(Section.WIDGETS); vm.widgetPickerOpen.value = true }; return@Panel }
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            slots.forEach { WidgetCard(vm, it, Modifier.fillMaxWidth()) }
+        }
+    }
+}
+
+@Composable
+private fun LatestNote(vm: LauncherViewModel, modifier: Modifier) {
+    val notes by vm.prefs.notes.collectAsStateWithLifecycle()
+    val n = notes.firstOrNull()
+    Panel(modifier, title = "note", trailing = { T("open ↗", color = LocalTerm.current.dim, size = 12.sp, modifier = Modifier.clickable { if (n != null) vm.openNote(n.id) else vm.go(Section.NOTES) }) }) {
+        if (n == null) { Empty("no notes yet", "+ new note") { vm.newNote(); vm.go(Section.NOTES) }; return@Panel }
+        T(n.title, weight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        T(n.text.lines().drop(1).joinToString("\n").trim(), color = LocalTerm.current.fg.copy(alpha = 0.85f), modifier = Modifier.verticalScroll(rememberScrollState()))
     }
 }
 

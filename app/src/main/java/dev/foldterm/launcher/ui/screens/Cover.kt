@@ -95,7 +95,7 @@ private fun Label(text: String, extra: String? = null) {
 }
 
 @Composable
-private fun ClockCard(vm: LauncherViewModel) {
+internal fun ClockCard(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val now by vm.now.collectAsStateWithLifecycle()
     val vitals by vm.vitals.collectAsStateWithLifecycle()
@@ -112,7 +112,7 @@ private fun ClockCard(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun NextCard(vm: LauncherViewModel) {
+internal fun NextCard(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val events by vm.events.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
@@ -134,7 +134,7 @@ private fun NextCard(vm: LauncherViewModel) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DialCard(vm: LauncherViewModel) {
+internal fun DialCard(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val contacts by vm.contacts.collectAsStateWithLifecycle()
     val ice by vm.prefs.ice.collectAsStateWithLifecycle()
@@ -163,7 +163,7 @@ private fun DialCard(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun InboxCard(vm: LauncherViewModel) {
+internal fun InboxCard(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val notifs by vm.notifications.collectAsStateWithLifecycle()
     val access by vm.notifAccess.collectAsStateWithLifecycle()
@@ -187,7 +187,7 @@ private fun InboxCard(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun MediaCard(vm: LauncherViewModel) {
+internal fun MediaCard(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val np by NowPlayingStore.state.collectAsStateWithLifecycle()
     val cur = np ?: return
@@ -208,7 +208,7 @@ private fun MediaCard(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun WeatherCard(vm: LauncherViewModel) {
+internal fun WeatherCard(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val w by vm.weather.collectAsStateWithLifecycle()
     val cur = w ?: return
@@ -227,7 +227,7 @@ private fun WeatherCard(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun TasksCard(vm: LauncherViewModel) {
+internal fun TasksCard(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val tasks by vm.tasks.collectAsStateWithLifecycle()
     val open = tasks.filter { !it.done }
