@@ -33,38 +33,42 @@ Agenda, inbox, people, weather and news in hinge-aware panes, with a command lin
 
 ## Highlights
 
-- **A command line for your phone.** One prompt launches apps, calls people, sets timers, does maths, adds events, splits the screen and searches everything.
-- **Hinge-aware layouts.** Panes split exactly at the Fold's crease, tabletop mode moves a live console to the bottom half, and the cover screen gets its own card layout.
-- **Your day on one screen.** Calendar, inbox, weather, steps, tasks and news are summarised on Home, and every card is configurable.
+- **A command line for your phone.** One prompt (typed or spoken) launches apps and app shortcuts, calls people, sets timers and alarms, converts units and currency, adds events and tasks, splits the screen, and searches apps, contacts, events, notes, messages and settings.
+- **Hinge-aware layouts.** Panes split exactly at the Fold's crease, tabletop mode moves a live console to the bottom half, and the cover screen gets its own big-target card layout.
+- **Your day on one screen.** Calendar, inbox, weather, steps, screen time, tasks, birthdays, alarms and news are summarised on Home, and every card is yours to arrange.
 - **Real split screen and app pairs.** Long-press → *split with…*, or `split chrome | slack`; save pairs and launch them by name.
-- **Widgets, icon packs, themes.** Host any Android widget, use any standard icon pack or tinted mono icons, and choose from four themes plus your wallpaper.
+- **Make it yours.** Five themes including a custom editor and automatic day/night switching, icon packs or tinted mono icons, wallpaper, text size, widgets, folders, renames, gestures and a terminal screen saver.
 - **Private by design.** No account, no analytics, no backend. Everything is read on the device.
 
 ## Panes
 
 | Pane | What it does |
 |---|---|
-| **⌂ Home** | Configurable cards: happening now (join / directions), agenda, on-device summary, widgets, quick dial, inbox, now playing, weather, tasks, latest note, big clock |
-| **» Chat / @ Mail** | Live feed from your messaging and mail apps' notifications, with inline reply where the app supports it |
-| **! Alerts** | Notification centre: grouped by app, clear all or per app, reply, copy, history, per-app **pin** and **mute** rules, and today's activity by hour |
-| **▦ Calendar** | **Agenda**, **day** timeline (overlaps side by side, a live *now* line, free gaps you tap to fill) and **month** views, event details, and a task list |
-| **☺ People** | Contacts with *in case of emergency* and favourite groups, companies, quick call/text/email, share, vCard view |
-| **▣ Photos** | Recent photos grouped by day |
-| **♫ Media** | Full player for whatever's playing: artwork, seek bar, skip and ±15/30 s jumps, switch between apps that are playing, current audio output, volume |
-| **♥ Health** | Step counter with a daily goal, plus an `htop`-style view of battery, storage, memory, uptime and hinge posture |
-| **☁ Weather** | Current conditions and feels-like, a 12-hour rain chart, 7-day range bars, wind, UV and sunrise/sunset, and severe-weather warnings (also shown on Home) |
-| **≡ News** | Headlines from any RSS or Atom feeds you choose, filterable by source |
-| **✎ Notes** | A scratchpad with autosave, search and copy. `note <text>` jots from the prompt |
-| **◫ Widgets** | Host real Android widgets (clocks, music, to-do lists…) in one or two columns, with reorder and resize. They can also go on Home |
-| **⚙ Settings** | Themes, icons, wallpaper, sidebar, home and cover layouts, permissions, default launcher, units, location, feeds |
+| **⌂ Home** | Cards you choose and arrange in two columns: happening now (join / directions), agenda, on-device summary, widgets, quick dial, inbox, now playing, weather, tasks, latest note, big clock, world clocks, most used apps, quick actions |
+| **» Chat / @ Mail** | Live feed from your messaging and mail apps' notifications, with inline reply, dismiss and snooze |
+| **! Alerts** | Notification centre: grouped by app, clear all or per app, reply, snooze (15m / 1h / 3h), copy, history, per-app **pin** and **mute** rules, and today's activity by hour |
+| **▦ Calendar** | **Agenda**, **day** timeline (overlaps side by side, *now* line, free gaps to tap), **week** grid and **month** views; quick-add field; event details; tasks with due dates and stars |
+| **☺ People** | Contacts with photos, *in case of emergency* and favourites, companies and **groups** tabs, call / text / email / WhatsApp / share, vCard view, birthdays |
+| **▣ Photos** | Recent photos by day with **album** chips, and a swipeable in-launcher viewer with share and open |
+| **♫ Media** | Full player for whatever's playing: artwork, seek bar, skip and ±15/30 s jumps, switch between playing apps, audio output, volume |
+| **◐ Controls** | Quick settings: ring / vibrate / silent, Do Not Disturb, volume per stream, brightness and auto-brightness, auto-rotate, screen timeout, torch, connectivity panels |
+| **⏱ Screen time** | Today's total and per-app time, open counts, unlocks, a 7-day chart and how today compares with your average |
+| **◎ Focus** | Focus sessions that hide distracting apps, turn on Do Not Disturb, set a clock-app timer and show a countdown banner |
+| **♥ Health** | Step counter with a goal and 7-day history, plus an `htop`-style view of battery, storage, memory, uptime and hinge posture |
+| **☁ Weather** | Current conditions, 12-hour rain chart, 7-day range bars, wind, UV, sunrise/sunset, severe-weather warnings, and **saved places** |
+| **≡ News** | RSS/Atom headlines by source, unread dots, hide read, mark all read, and a **saved** list |
+| **✎ Notes** | Autosaving scratchpad with search, copy, and a preview that renders headings, bullets and tappable `- [ ]` checklists |
+| **◫ Widgets** | Host real Android widgets in one or two columns with reorder and resize; they can also go on Home and the cover screen |
+| **⚙ Settings** | Themes, icons, text size, wallpaper, sidebar, home and cover layouts, gestures, permissions, search engine, morning brief, backup & restore |
 
 ## Home, dock & drawer
 
-- **Dock:** your pinned apps (sized to fit the screen), the app drawer button and a now-playing widget. Tap the widget for the Media pane, or its artwork to play/pause.
-- **App drawer:** a centred grid with unread **badges**, filtering, saved **app pairs** as chips, and a long-press menu with *split with…*, *pop-up window*, pin to dock, app info, hide and uninstall.
-- **Gestures:** swipe up for the drawer, swipe down for the notification shade (or to close the drawer), long-press for haptic menus. On a keyboard: <kbd>/</kbd> opens the prompt, <kbd>Esc</kbd> closes it, <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> jumps between sections.
+- **Dock:** pinned apps (sized to fit the screen), the app drawer button and a now-playing widget. Tap the widget for the Media pane, or its artwork to play/pause.
+- **App drawer:** a centred grid with unread **badges**; sort by a–z, most used or newest; filter by **folders** and Android categories; an A–Z jump strip; saved **app pairs** as chips. Long-press an app for its own **shortcuts**, *split with…*, *pop-up window*, pin to dock, rename, folders, app info, hide and uninstall.
+- **Gestures:** swipe up, swipe down and double-tap on empty space each run an action you choose: drawer, notification shade, prompt, alerts, media, **lock screen**, torch or nothing. On a keyboard: <kbd>/</kbd> opens the prompt, <kbd>Esc</kbd> closes it, <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> jumps between sections.
 - **Split screen & pop-ups:** `split <left> | <right>`, saved pairs (`pair save work chrome | slack`, then `pair work` or just `work`), and `float <app>` for a floating window where the device supports it. Split screen needs the unfolded inner screen.
-- **Crash log:** if FoldTerm ever crashes, the next launch says so and `crashlog` shows (and copies) the details.
+- **Screen saver:** *FoldTerm clock*, a large clock over falling terminal glyphs in your theme, while charging or docked.
+- **Crash log:** if FoldTerm ever crashes, the next launch says so and `crashlog` shows (and copies) the details. After each update the console lists what's new.
 
 ## Built for foldables
 
@@ -72,20 +76,19 @@ The layout follows the hinge reported by Jetpack WindowManager:
 
 | Posture | Layout |
 |---|---|
-| **Folded / cover screen** | Cover cards (big clock, next event, quick dial, inbox, now playing, weather, tasks) in one column, with section tabs above the dock |
+| **Folded / cover screen** | Cover cards you choose (big clock, next event, quick dial, inbox, now playing, weather, tasks, widget, world clocks, apps, quick actions) in one column, with section tabs above the dock |
 | **Open, flat** | Nav rail and two panes, split exactly at the hinge so nothing sits on the crease |
 | **Half-open, book** | Same as open, with panes on either side of the fold |
 | **Half-open, tabletop** | Content on the top half, a live console and the dock on the bottom half |
 
 ## Make it yours
 
-- **Themes:** `phosphor` (green on black), `amber`, `pastel` (light and soft) and `paper` (planner-style), from Settings or `theme <name>`.
-- **Icons:** colour, **mono** (tinted to the theme or any colour you pick), or any standard Android **icon pack**, which shows how many of your apps it covers.
-- **Background:** the theme's backdrop, or your wallpaper with four dim levels.
-- **Sidebar:** switch sections on or off and reorder them. Hidden sections still open with `cd <section>`.
-- **Home layout:** choose the cards, their order and their column (left/right).
-- **Cover screen:** choose the cards for the folded phone, or keep the classic layout.
-- **Hidden apps, aliases and pairs:** keep the drawer tidy and turn long commands into one word.
+- **Themes:** `phosphor` (green on black), `amber`, `pastel`, `paper`, and **custom** (pick a base, two accents and a background); **auto theme** switches between a day and a night theme at sunrise and sunset.
+- **Icons:** colour, **mono** (tinted to the theme or any colour), or any standard Android **icon pack**, which shows how many of your apps it covers. Rename any app.
+- **Background & text:** the theme's backdrop or your wallpaper with four dim levels; four text sizes.
+- **Layouts:** choose and order sidebar sections, Home cards (and their column), and cover-screen cards.
+- **Prompt:** aliases (`alias work=dnd on; split slack | chrome`), command chaining with `;`, your choice of web search engine, and an optional **morning brief**.
+- **Backup & restore:** save every setting (layouts, notes, tasks, pairs, aliases, folders…) to a file and restore it on another phone.
 
 ## The prompt
 
@@ -95,34 +98,25 @@ Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you t
 ```text
 ❯ help
   open <app>                launch an app (or just type its name)
-  cd <section>              home · chat · mail · notifs · cal · people · photos · media · health · weather · news · notes · widgets · settings
-  call | sms | email <name> act on a contact
-  cal [days]                print upcoming events
-  todo [add|done n|rm n]    manage tasks
-  weather · news · notifs [clear]   quick readouts
-  crashlog [clear]          last crash details
-  play | pause | next | prev
-  theme <phosphor|amber|pastel|paper>
-  dock add|rm <app> | reset
-  hide | unhide <app> · hidden
-  = <expr>                  calculator (or just type 2*(3+4))
-  timer <5m|1h30m|90s> [label]
-  alarm <7:30|7pm> [label]
-  event [day] [time] <title>  e.g. event fri 3pm dentist
-  torch [on|off] · shade
-  note <text> · notes [filter]
-  alias name=command · unalias name   e.g. alias wk=open slack
-  split <left> | <right>    two apps side by side (inner screen)
-  pair save <name> <a> | <b> · pair <name> · pairs · pair rm <name>
-  float <app>               open in a pop-up window
-  vol [0-100] · mute
-  maps <place> · yt <query> · copy <text>
-  settings [wifi|bt|display|battery|apps|sound]
-  grant · access · default  permissions · notification access · set as home app
-  uptime · fold · date · clear · reload · version
+  cd <section>              home · chat · mail · notifs · cal · people · photos · media · controls · usage
+                            · focus · health · weather · news · notes · widgets · settings
+  call | sms | email | wa <name> [msg]   act on a contact
+  cal [days] · event [day] [time] <title>   e.g. event fri 3pm dentist
+  todo [add|done n|rm n]    tasks; "todo add pay rent fri !" sets a due day and a star
+  = <expr> · conv 5 km in mi · 100 usd in aud · time tokyo   (or just type them)
+  timer 5m [label] · alarm 7:30 [label] · focus 25m [label] | stop
+  weather [city] · news · notifs [clear] · usage · brief · neofetch · ip
+  play | pause | next | prev · vol [0-100] · mute
+  bright [0-100|auto] · dnd [on|off] · ring <normal|vibrate|silent> · rotate · torch · lock · shade
+  split <left> | <right> · pair save <name> <a> | <b> · pair <name> · float <app>
+  note <text> · notes · clocks add <city> · folder <name> · rename <app> = <name>
+  alias name=cmd; cmd · unalias name · history [clear]
+  theme <phosphor|amber|pastel|paper|custom> · dock add|rm <app> · hide | unhide <app>
+  settings [wifi|bt|display|battery|apps|sound] · screensaver · grant · access · default
+  maps <place> · yt <query> · g <query> · copy <text> · crashlog · reload · version
 ```
 
-The prompt searches everything: apps, contacts, upcoming events, notes and messages. Typing a web address (`github.com`) opens it, and maths gets answered as you type. With the prompt empty, it shows your recent apps and commands. Apps you open often rank higher in results. Anything that isn't a command or a match becomes a web search.
+The prompt searches everything: apps, app shortcuts, contacts, upcoming events, notes, messages, saved pairs and settings (FoldTerm's and Android's). Maths, unit conversions, currency and world times are answered as you type. Typing a web address (`github.com`) opens it. With the prompt empty it shows recent apps and commands; <kbd>↑</kbd>/<kbd>↓</kbd> pick a suggestion while typing. Tap 🎤 to speak a command. Anything else becomes a web search.
 
 ## Install
 
@@ -130,7 +124,7 @@ Each release has two APKs, signed with the same key so you can switch between th
 
 | APK | Use it when |
 |---|---|
-| `foldterm-x.y.z.apk` (full) | You want the Mail, Chat and now-playing panes, which are built from your notifications |
+| `foldterm-x.y.z.apk` (full) | You want the Mail, Chat, Alerts and Media panes, which are built from your notifications |
 | `foldterm-x.y.z-lite.apk` | Your phone refuses the full APK with *"this app requests access to sensitive data"* |
 
 1. Download an APK from **[Releases](https://github.com/TheSwagInDisguise/foldterm/releases/latest)** and open it on your phone. You may need to allow installs from your browser.
@@ -151,7 +145,9 @@ FoldTerm has no account, no analytics and no backend.
 
 - Calendar, contacts, photos and steps are read from Android's own providers and stay on the device.
 - Mail and chat come from notifications that are already on your phone. FoldTerm never signs in to your accounts.
-- Network requests go only to [Open-Meteo](https://open-meteo.com) for weather (approximate coordinates, no key) and to the news feeds you configure.
+- Screen time, steps and notifications are read from Android on the device and never leave it.
+- Network requests go only to [Open-Meteo](https://open-meteo.com) for weather and place search (approximate coordinates, no key), [open.er-api.com](https://www.exchangerate-api.com/docs/free) for currency rates (only when you convert currency), and the news feeds you configure.
+- Optional permissions are explained where they're used: usage access (screen time), modify system settings (brightness/rotation/timeout), Do Not Disturb access, and a device-admin permission limited to locking the screen.
 
 ## Building & releasing
 
@@ -191,9 +187,11 @@ git commit -am "Release 0.2.0" && git push
 app/src/main/java/dev/foldterm/launcher/
 ├── MainActivity.kt         window/fold tracking, permission + home-role requests
 ├── LauncherViewModel.kt    state and actions
-├── shell/Shell.kt          command interpreter and fuzzy suggestions
+├── shell/                  command interpreter, fuzzy suggestions, calculator, units, date parsing
 ├── SplitActivity.kt        invisible trampoline that enters split screen
-├── data/                   calendar, contacts, apps, notifications/media, widgets, icon packs, weather/news, device
+├── TerminalDream.kt        "FoldTerm clock" screen saver
+├── data/                   calendar, contacts, apps, notifications/media, widgets, icon packs, weather/news,
+│                           controls, screen time, crash log, lock admin, device
 └── ui/                     theme, components, root layout, screens/
 ```
 
