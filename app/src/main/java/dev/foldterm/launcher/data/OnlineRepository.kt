@@ -137,6 +137,34 @@ class OnlineRepository(private val ctx: Context) {
         }
     }
 
+    /** Dictionary entry: phonetic plus (part of speech, definition, example) triples. */
+    fun define(word: String): Pair<String, List<Triple<String, String, String?>>>? {
+        val arr = org.json.JSONArray(get("https://api.dictionaryapi.dev/api/v2/entries/en/" + java.net.URLEncoder.encode(word.trim(), "UTF-8")))
+        if (arr.length() == 0) return null
+        val first = arr.getJSONObject(0)
+        val out = mutableListOf<Triple<String, String, String?>>()
+        val meanings = first.optJSONArray("meanings") ?: return null
+        for (i in 0 until meanings.length()) {
+            val m = meanings.getJSONObject(i)
+            val defs = m.optJSONArray("definitions") ?: continue
+            for (j in 0 until minOf(2, defs.length())) {
+                val d = defs.getJSONObject(j)
+                out += Triple(m.optString("partOfSpeech"), d.optString("definition"), d.optString("example").takeIf { it.isNotBlank() })
+            }
+        }
+        return first.optString("phonetic") to out.take(5)
+    }
+
+    /** Wikipedia summary for the best title match: (title, extract, url). */
+    fun wiki(query: String): Triple<String, String, String>? {
+        val enc = java.net.URLEncoder.encode(query.trim(), "UTF-8")
+        val search = JSONObject(get("https://en.wikipedia.org/w/rest.php/v1/search/title?limit=1&q=$enc"))
+        val key = search.optJSONArray("pages")?.optJSONObject(0)?.optString("key")?.takeIf { it.isNotBlank() } ?: return null
+        val s = JSONObject(get("https://en.wikipedia.org/api/rest_v1/page/summary/" + java.net.URLEncoder.encode(key, "UTF-8").replace("+", "%20")))
+        val url = s.optJSONObject("content_urls")?.optJSONObject("mobile")?.optString("page") ?: "https://en.m.wikipedia.org/wiki/$key"
+        return Triple(s.optString("title", key), s.optString("extract"), url)
+    }
+
     /** Exchange rates against USD from open.er-api.com (free, no key). */
     fun usdRates(): Map<String, Double> {
         val json = JSONObject(get("https://open.er-api.com/v6/latest/USD"))

@@ -816,6 +816,15 @@ class Shell(private val vm: LauncherViewModel) {
             if (rest.isBlank()) { vm.go(Section.MONEY); vm.shellOpen.value = false; return@Cmd }
             vm.logExpense(rest)
         },
+        Cmd("define", "define <word>", "dictionary definition", setOf("dict", "meaning")) { _, rest ->
+            require(rest.isNotBlank()) { "usage: define serendipity" }
+            vm.define(rest)
+        },
+        Cmd("wiki", "wiki <topic> | open", "Wikipedia summary", setOf("wp", "wikipedia")) { _, rest ->
+            if (rest == "open") { vm.lastWikiUrl.value?.let { vm.openUrl(it) } ?: vm.out("look something up first", LineKind.DIM); return@Cmd }
+            require(rest.isNotBlank()) { "usage: wiki foldable smartphone" }
+            vm.wiki(rest)
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

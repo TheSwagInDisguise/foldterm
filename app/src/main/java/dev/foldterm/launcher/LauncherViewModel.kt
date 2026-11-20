@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.52.0" to listOf("`define <word>` for dictionary definitions", "`wiki <topic>` for a Wikipedia summary (`wiki open` for the article)"),
     "0.51.0" to listOf("Money pane: log spending (`spent 12.50 lunch`), monthly budget, categories and a 14-day chart"),
     "0.50.0" to listOf("Habits pane: daily check-ins, streaks and a 30-day rate; habits card for Home and cover", "`habit add read`, `habit done read`, `habits`"),
     "0.49.0" to listOf("agenda rows always show the event title", "status bar icons match FoldTerm's theme"),
@@ -1165,6 +1166,33 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ───────────────────────── currency ─────────────────────────
+
+    fun define(word: String) {
+        out("looking up $word…", LineKind.DIM)
+        viewModelScope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { online.define(word) }.getOrNull() }
+            if (r == null || r.second.isEmpty()) { out("no definition found for '$word'", LineKind.ERR); return@launch }
+            out("$word ${r.first}".trim(), LineKind.ACCENT)
+            r.second.forEach { (pos, def, ex) ->
+                out("  ($pos) $def")
+                ex?.let { out("        “$it”", LineKind.DIM) }
+            }
+        }
+    }
+
+    val lastWikiUrl = MutableStateFlow<String?>(null)
+
+    fun wiki(q: String) {
+        out("searching wikipedia…", LineKind.DIM)
+        viewModelScope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { online.wiki(q) }.getOrNull() }
+            if (r == null) { out("nothing on wikipedia for '$q'", LineKind.ERR); return@launch }
+            out(r.first, LineKind.ACCENT)
+            r.second.chunked(400).take(3).forEach { out("  $it") }
+            lastWikiUrl.value = r.third
+            out("  `wiki open` to read the full article", LineKind.DIM)
+        }
+    }
 
     /** Converts with cached rates when fresh (12h); null if no usable cache. */
     fun convertCached(amount: Double, from: String, to: String): Double? {
