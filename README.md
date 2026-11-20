@@ -104,7 +104,7 @@ Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you t
   contact add <name> <number>             create a contact
   cal [days] · event [day] [time] <title>   e.g. event fri 3pm dentist
   todo [add|done n|rm n]    tasks; "todo add pay rent fri !" sets a due day and a star
-  = <expr> · conv 5 km in mi · 100 usd in aud · time tokyo   (or just type them)
+  = <expr> · 18% of 240 · conv 5 km in mi · 100 usd in aud · time tokyo   (or just type them)
   timer 5m [label] · alarm 7:30 [label] · focus 25m [label] | stop
   weather [city] · news · notifs [clear] · usage · brief · neofetch · ip
   play | pause | next | prev · vol [0-100] · mute
@@ -118,7 +118,7 @@ Tap the search bar, or press <kbd>/</kbd> on a keyboard. Results update as you t
   maps <place> · yt <query> · g <query> · copy <text> · crashlog · reload · version
 ```
 
-The prompt searches everything: apps, app shortcuts, contacts, upcoming events, notes, messages, saved pairs and settings (FoldTerm's and Android's). Maths, unit conversions, currency and world times are answered as you type. Typing a web address (`github.com`) opens it. With the prompt empty it shows recent apps and commands; <kbd>↑</kbd>/<kbd>↓</kbd> pick a suggestion while typing. Tap 🎤 to speak a command. Anything else becomes a web search.
+The prompt searches everything: apps, app shortcuts, contacts, upcoming events, notes, messages, saved pairs and settings (FoldTerm's and Android's). Maths (with `ans`), plain-English percentages, unit conversions, currency and world times are answered as you type. Typing a web address (`github.com`) opens it. With the prompt empty it shows recent apps and commands; <kbd>↑</kbd>/<kbd>↓</kbd> pick a suggestion while typing. Tap 🎤 to speak a command. Anything else becomes a web search.
 
 ## Install
 
