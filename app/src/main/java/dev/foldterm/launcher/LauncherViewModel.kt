@@ -73,6 +73,12 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.20.0" to listOf(
+        "rename any app: long-press → rename, or `rename chrome = web`",
+        "prompt history survives restarts; `history` lists it",
+        "next alarm and time-to-full charge in the Home summary",
+        "7-day step history in Health; a widget card for the cover screen",
+    ),
     "0.18.0" to listOf(
         "back up and restore every setting (Settings → backup)",
         "contact photos in People, quick dial and cover cards",
@@ -138,7 +144,24 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val notifAccess = MutableStateFlow(false)
     val isDefaultHome = MutableStateFlow(false)
     val log = MutableStateFlow<List<Line>>(emptyList())
-    val history = MutableStateFlow<List<String>>(emptyList())
+    val history = MutableStateFlow(prefs.loadHistory())
+    val renameTarget = MutableStateFlow<AppEntry?>(null)
+
+    fun rename(app: AppEntry, label: String?) {
+        prefs.setLabel(app.key, label)
+        renameTarget.value = null
+        loadApps()
+    }
+
+    /** Next alarm set in any clock app, or null. */
+    fun nextAlarm(): Long? = runCatching {
+        ctx.getSystemService(android.app.AlarmManager::class.java)?.nextAlarmClock?.triggerTime
+    }.getOrNull()
+
+    /** Milliseconds until full while charging, or null when unknown. */
+    fun chargeTimeLeft(): Long? = runCatching {
+        ctx.getSystemService(android.os.BatteryManager::class.java)?.computeChargeTimeRemaining()?.takeIf { it > 0 }
+    }.getOrNull()
 
     val notifications get() = NotificationStore.items
     val nowPlaying get() = NowPlayingStore.state
@@ -250,7 +273,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun loadApps() {
         viewModelScope.launch {
+            val labels = prefs.labels.value
             allApps.value = withContext(Dispatchers.IO) { appsRepo.load() }
+                .map { a -> labels[a.key]?.let { a.copy(label = it) } ?: a }
+                .sortedWith(compareBy({ it.label.lowercase() }, { it.isWork }))
             applyHidden()
         }
     }
@@ -317,10 +343,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         stepStop = deviceRepo.listenSteps { raw ->
             val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
             val base = prefs.stepBaseline()
+            if (base != null && base.first != day) prefs.rollStepHistory()
             val baseline = if (base == null || base.first != day || raw < base.second) {
                 prefs.setStepBaseline(day, raw); raw
             } else base.second
             steps.update { it.copy(steps = raw - baseline) }
+            prefs.recordStepsLive(day, raw - baseline)
         }
     }
 
@@ -908,7 +936,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun submit() {
         val line = input.value
         input.value = ""
-        if (line.isNotBlank()) history.update { (it.filter { h -> h != line } + line).takeLast(50) }
+        if (line.isNotBlank()) {
+            history.update { (it.filter { h -> h != line } + line).takeLast(100) }
+            prefs.saveHistory(history.value)
+        }
         shell.execute(line)
     }
 }

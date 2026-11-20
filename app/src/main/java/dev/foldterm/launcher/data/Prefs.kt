@@ -284,6 +284,40 @@ class Prefs(context: Context) {
         sp.edit().putString("fxRates", JSONObject().put("at", System.currentTimeMillis()).put("rates", JSONObject(rates as Map<*, *>)).toString()).apply()
     }
 
+    // ── app renames ──
+    val labels = MutableStateFlow(loadStringMap("labels"))
+    fun setLabel(key: String, label: String?) {
+        val next = labels.value.toMutableMap().apply { if (label.isNullOrBlank()) remove(key) else put(key, label.trim()) }
+        labels.value = next
+        sp.edit().putString("labels", JSONObject(next as Map<*, *>).toString()).apply()
+    }
+    private fun loadStringMap(key: String): Map<String, String> = runCatching {
+        val o = JSONObject(sp.getString(key, "{}")!!)
+        o.keys().asSequence().associateWith { o.getString(it) }
+    }.getOrDefault(emptyMap())
+
+    // ── prompt history ──
+    fun loadHistory(): List<String> = runCatching {
+        val a = JSONArray(sp.getString("history", "[]"))
+        (0 until a.length()).map { a.getString(it) }
+    }.getOrDefault(emptyList())
+    fun saveHistory(list: List<String>) { sp.edit().putString("history", JSONArray(list).toString()).apply() }
+
+    // ── step history: day → steps, last 14 days ──
+    fun stepHistory(): Map<String, Int> = runCatching {
+        val o = JSONObject(sp.getString("stepHistory", "{}")!!)
+        o.keys().asSequence().associateWith { o.getInt(it) }
+    }.getOrDefault(emptyMap())
+    fun recordStepsLive(day: String, steps: Int) { sp.edit().putString("stepsLastDay", day).putInt("stepsLast", steps).apply() }
+    /** When the day rolls over, file yesterday's last count into the history. */
+    fun rollStepHistory() {
+        val day = sp.getString("stepsLastDay", null) ?: return
+        val n = sp.getInt("stepsLast", 0)
+        val map = stepHistory().toMutableMap().apply { put(day, maxOf(n, this[day] ?: 0)) }
+        val keep = map.toSortedMap().entries.toList().takeLast(14).associate { it.key to it.value }
+        sp.edit().putString("stepHistory", JSONObject(keep as Map<*, *>).toString()).apply()
+    }
+
     /** True exactly once, on the very first launch. */
     fun consumeFirstRun(): Boolean {
         if (sp.getBoolean("seenFirstRun", false)) return false

@@ -51,6 +51,7 @@ val COVER_CARDS = listOf(
     "media" to "now playing",
     "weather" to "weather",
     "tasks" to "tasks",
+    "widgets" to "first widget",
 )
 
 /** Home for the folded phone: large type, big targets, one column, no nested scrolling. */
@@ -67,6 +68,7 @@ fun CoverHome(vm: LauncherViewModel) {
                 "media" -> MediaCard(vm)
                 "weather" -> WeatherCard(vm)
                 "tasks" -> TasksCard(vm)
+                "widgets" -> vm.prefs.widgets.value.firstOrNull()?.let { WidgetCard(vm, it, Modifier.fillMaxWidth()) }
             }
         }
         if (cards.isEmpty()) T("# no cover cards — choose some in Settings → cover screen", color = LocalTerm.current.dim)

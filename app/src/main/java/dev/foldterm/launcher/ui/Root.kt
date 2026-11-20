@@ -254,6 +254,8 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
                 exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.98f),
             ) { AppDrawer(vm) }
 
+            RenameDialog(vm)
+
             AnimatedVisibility(visible = shellOpen, enter = fadeIn(tween(120)), exit = fadeOut(tween(100))) {
                 val topPad = with(density) { (promptBottom - rootTop).coerceAtLeast(0).toDp() }
                 Box(
@@ -272,6 +274,27 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
             }
         }
     }
+}
+
+@Composable
+private fun RenameDialog(vm: LauncherViewModel) {
+    val target by vm.renameTarget.collectAsStateWithLifecycle()
+    val app = target ?: return
+    val t = LocalTerm.current
+    var text by remember(app.uniqueKey) { mutableStateOf(app.label) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { vm.renameTarget.value = null },
+        containerColor = t.panel,
+        title = { T("rename ${app.label}", weight = FontWeight.Bold) },
+        text = { Field(text, { text = it }, "new name", Modifier.fillMaxWidth(), onDone = { vm.rename(app, text) }) },
+        confirmButton = { TButton("save", primary = true) { vm.rename(app, text) } },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TButton("reset") { vm.rename(app, null) }
+                TButton("cancel") { vm.renameTarget.value = null }
+            }
+        },
+    )
 }
 
 private val sectionKeys = listOf(Key.One, Key.Two, Key.Three, Key.Four, Key.Five, Key.Six, Key.Seven, Key.Eight, Key.Nine)
@@ -853,6 +876,7 @@ private fun AppDrawer(vm: LauncherViewModel) {
                             DropdownMenuItem(text = { T("pop-up window") }, onClick = { menu = false; vm.popup(app) })
                             DropdownMenuItem(text = { T("pin to dock") }, onClick = { menu = false; vm.pinToDock(app) })
                             DropdownMenuItem(text = { T("app info") }, onClick = { menu = false; vm.appsRepo.appInfo(app) })
+                            DropdownMenuItem(text = { T("rename") }, onClick = { menu = false; vm.renameTarget.value = app })
                             DropdownMenuItem(text = { T("hide") }, onClick = { menu = false; vm.setHidden(app, true) })
                             DropdownMenuItem(text = { T("uninstall") }, onClick = { menu = false; vm.start(vm.appsRepo.uninstallIntent(app)) })
                         }

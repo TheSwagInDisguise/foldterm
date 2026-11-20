@@ -596,6 +596,17 @@ class Shell(private val vm: LauncherViewModel) {
             Units.currencyQuery(rest)?.let { (n, a, b) -> vm.convertCurrency(n, a, b); return@Cmd }
             error("try: 5 km in mi · 350 f to c · 100 usd in aud")
         },
+        Cmd("history", "history [clear]", "recent prompt commands") { args, _ ->
+            if (args.firstOrNull() == "clear") { vm.history.value = emptyList(); vm.prefs.saveHistory(emptyList()); vm.out("history cleared", LineKind.OK); return@Cmd }
+            vm.history.value.takeLast(25).forEachIndexed { i, h -> vm.out("  ${(i + 1).toString().padStart(3)}  $h") }
+        },
+        Cmd("rename", "rename <app> = <name>", "give an app a different label") { _, rest ->
+            val target = rest.substringBefore('=').trim()
+            val name = rest.substringAfter('=', "").trim()
+            val app = findApp(target) ?: error("no app matching '$target'")
+            vm.rename(app, name.ifBlank { null })
+            vm.out(if (name.isBlank()) "reset ${app.label}" else "${app.label} → $name", LineKind.OK)
+        },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->

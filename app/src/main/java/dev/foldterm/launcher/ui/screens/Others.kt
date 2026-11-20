@@ -443,6 +443,20 @@ fun HealthScreen(vm: LauncherViewModel) {
                         }
                     }
                 }
+                val history = remember(steps.steps) { vm.prefs.stepHistory() }
+                if (history.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    T("last days", color = t.dim, size = 12.sp)
+                    val days = history.toSortedMap().entries.toList().takeLast(6).map { it.key.takeLast(5) to it.value } + ("today" to (steps.steps ?: 0))
+                    val max = days.maxOf { it.second }.coerceAtLeast(goal)
+                    days.forEach { (d, n) ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            T(d, color = t.dim, size = 12.sp, modifier = Modifier.width(56.dp))
+                            T(Fmt.bar(n.toFloat() / max, 16), color = if (n >= goal) t.ok else t.accent, size = 12.sp, maxLines = 1)
+                            T("  %,d".format(n), size = 12.sp)
+                        }
+                    }
+                }
                 Spacer(Modifier.height(16.dp))
                 T("Counted on-device from the step sensor since the first reading today. Sleep and heart data live in your health app.", color = t.dim, size = 12.sp)
             }

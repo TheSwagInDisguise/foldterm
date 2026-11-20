@@ -358,6 +358,13 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
                     } + if (bdays.size > 3) " and ${bdays.size - 3} more." else "."
                 }
             }
+            val alarm = remember(now) { vm.nextAlarm() }
+            if (alarm != null && alarm - now < 24 * 3_600_000L) {
+                Divider()
+                SummaryRow("⏰", "Next alarm", t.warn, onClick = { vm.start(android.content.Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS)) }) {
+                    "${Fmt.dayLabel(alarm, now)} at ${Fmt.time(alarm)} (${Fmt.until(alarm, now)})."
+                }
+            }
             usage?.let { u ->
                 Divider()
                 SummaryRow("⏱", "Screen time", t.accent2, onClick = { vm.go(Section.USAGE) }) {
@@ -368,7 +375,8 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
             vitals?.let { v ->
                 Divider()
                 SummaryRow("⚡", "Device", t.accent, onClick = { vm.go(Section.HEALTH) }) {
-                    "Battery ${v.battery}%${if (v.charging) " and charging" else ""}. ${Fmt.gb(v.storageFreeGb)} storage free."
+                    val full = if (v.charging) vm.chargeTimeLeft() else null
+                    "Battery ${v.battery}%${if (v.charging) " and charging${full?.let { ", full in ${Fmt.duration(it)}" } ?: ""}" else ""}. ${Fmt.gb(v.storageFreeGb)} storage free."
                 }
             }
         }
