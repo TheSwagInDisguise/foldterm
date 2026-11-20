@@ -123,6 +123,20 @@ class OnlineRepository(private val ctx: Context) {
         )
     }
 
+    data class Place(val name: String, val lat: Double, val lon: Double)
+
+    /** City search via Open-Meteo's geocoder (no key). */
+    fun geocode(query: String): List<Place> {
+        val url = "https://geocoding-api.open-meteo.com/v1/search?count=5&language=en&name=" + java.net.URLEncoder.encode(query.trim(), "UTF-8")
+        val arr = JSONObject(get(url)).optJSONArray("results") ?: return emptyList()
+        return (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            val label = listOfNotNull(o.optString("name").takeIf { it.isNotBlank() }, o.optString("admin1").takeIf { it.isNotBlank() }, o.optString("country_code").takeIf { it.isNotBlank() })
+                .distinct().joinToString(", ")
+            Place(label, o.getDouble("latitude"), o.getDouble("longitude"))
+        }
+    }
+
     /** Exchange rates against USD from open.er-api.com (free, no key). */
     fun usdRates(): Map<String, Double> {
         val json = JSONObject(get("https://open.er-api.com/v6/latest/USD"))

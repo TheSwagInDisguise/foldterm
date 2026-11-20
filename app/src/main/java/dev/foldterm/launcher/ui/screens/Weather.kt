@@ -1,6 +1,12 @@
 package dev.foldterm.launcher.ui.screens
 
 import androidx.compose.foundation.background
+import dev.foldterm.launcher.ui.Field
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -45,6 +51,61 @@ import java.util.Locale
 
 @Composable
 fun WeatherScreen(vm: LauncherViewModel) {
+    val place by vm.weatherPlace.collectAsStateWithLifecycle()
+    val placeWeather by vm.placeWeather.collectAsStateWithLifecycle()
+    Column(Modifier.fillMaxSize()) {
+        PlacesBar(vm, place)
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            if (place == null) HereWeather(vm)
+            else {
+                val pw = placeWeather
+                if (pw == null) Panel(Modifier.fillMaxSize(), title = "wttr · ${place!!.substringBefore('|')}") { Empty("fetching forecast…") }
+                else WeatherBody(vm, pw, "")
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlacesBar(vm: LauncherViewModel, place: String?) {
+    val t = LocalTerm.current
+    val places by vm.prefs.places.collectAsStateWithLifecycle()
+    val results by vm.placeResults.collectAsStateWithLifecycle()
+    var adding by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            PlaceChip("⌖ here", place == null, onClick = { vm.showPlace(null) })
+            places.forEach { spec -> PlaceChip(spec.substringBefore('|').substringBefore(','), place == spec, onClick = { vm.showPlace(spec) }, onRemove = { vm.removePlace(spec) }) }
+            PlaceChip(if (adding) "cancel" else "+ add place", false, onClick = { adding = !adding; query = ""; vm.searchPlaces("") })
+        }
+        if (adding) {
+            Spacer(Modifier.height(8.dp))
+            Field(query, { query = it }, "search a city…", Modifier.fillMaxWidth(), onDone = { vm.searchPlaces(query) })
+            results.forEach { r ->
+                T("+ ${r.name}", modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { vm.savePlace(r); adding = false; query = "" }.padding(10.dp))
+            }
+            if (query.isNotBlank() && results.isEmpty()) T("press enter to search", color = t.dim, size = 12.sp, modifier = Modifier.padding(top = 6.dp))
+        }
+    }
+}
+
+@Composable
+private fun PlaceChip(label: String, on: Boolean, onClick: () -> Unit, onRemove: (() -> Unit)? = null) {
+    val t = LocalTerm.current
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(if (on) t.button else t.chip).clickable(onClick = onClick)
+            .padding(start = 12.dp, end = if (onRemove != null) 4.dp else 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        T(label, color = if (on) t.onButton else t.fg, size = 12.sp, maxLines = 1)
+        if (onRemove != null) T("✕", color = if (on) t.onButton else t.dim, size = 11.sp,
+            modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onRemove).padding(horizontal = 6.dp))
+    }
+}
+
+@Composable
+private fun HereWeather(vm: LauncherViewModel) {
     val t = LocalTerm.current
     val weather by vm.weather.collectAsStateWithLifecycle()
     val status by vm.weatherStatus.collectAsStateWithLifecycle()
@@ -60,6 +121,11 @@ fun WeatherScreen(vm: LauncherViewModel) {
         }
         return
     }
+    WeatherBody(vm, w, status)
+}
+
+@Composable
+private fun WeatherBody(vm: LauncherViewModel, w: Weather, status: String) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         if (maxWidth >= 640.dp) {
             TwoPane(Modifier.fillMaxSize(), leftFraction = 0.5f, left = { m -> NowPanel(vm, w, status, m) }, right = { m -> WeekPanel(w, m) })

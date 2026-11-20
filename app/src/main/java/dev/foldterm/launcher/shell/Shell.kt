@@ -337,7 +337,8 @@ class Shell(private val vm: LauncherViewModel) {
                 else -> { vm.addTask(rest); vm.out("added", LineKind.OK) }
             }
         },
-        Cmd("weather", "weather", "current conditions", setOf("wttr")) { _, _ ->
+        Cmd("weather", "weather [city]", "current conditions here or anywhere", setOf("wttr")) { _, rest ->
+            if (rest.isNotBlank()) { vm.weatherFor(rest); return@Cmd }
             val w = vm.weather.value
             if (w == null) { vm.out(vm.weatherStatus.value.ifBlank { "no data yet" }, LineKind.DIM); vm.reloadWeather(); return@Cmd }
             vm.out("${w.glyph}  ${w.temp.toInt()}°${w.unit} ${w.description}${w.place?.let { "  ($it)" } ?: ""}", LineKind.ACCENT)

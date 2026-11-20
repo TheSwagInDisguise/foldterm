@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.24.0" to listOf("saved weather places: + add place in the Weather pane", "`weather tokyo` prints anywhere's forecast"),
     "0.23.0" to listOf("Calendar week view: seven day columns on one timeline; tap a slot to add an event"),
     "0.22.0" to listOf(
         "photo viewer: tap a photo, swipe through, share or open it",
@@ -342,6 +343,58 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun reloadWeather() { viewModelScope.launch { loadWeather() } }
+
+    // ───────────────────────── weather places ─────────────────────────
+
+    /** Saved place shown in the Weather pane ("name|lat|lon"), or null for here. */
+    val weatherPlace = MutableStateFlow<String?>(null)
+    val placeWeather = MutableStateFlow<Weather?>(null)
+    val placeResults = MutableStateFlow<List<OnlineRepository.Place>>(emptyList())
+
+    fun showPlace(spec: String?) {
+        weatherPlace.value = spec
+        placeWeather.value = null
+        if (spec == null) return
+        val p = spec.split('|')
+        val lat = p.getOrNull(1)?.toDoubleOrNull() ?: return
+        val lon = p.getOrNull(2)?.toDoubleOrNull() ?: return
+        viewModelScope.launch {
+            placeWeather.value = withContext(Dispatchers.IO) { runCatching { online.weather(lat, lon, prefs.fahrenheit.value) }.getOrNull() }
+                ?.copy(place = p[0])
+            if (placeWeather.value == null) out("couldn't load weather for ${p[0]}", LineKind.ERR)
+        }
+    }
+
+    fun searchPlaces(q: String) {
+        if (q.isBlank()) { placeResults.value = emptyList(); return }
+        viewModelScope.launch {
+            placeResults.value = withContext(Dispatchers.IO) { runCatching { online.geocode(q) }.getOrDefault(emptyList()) }
+        }
+    }
+
+    fun savePlace(p: OnlineRepository.Place) {
+        val spec = "${p.name}|${p.lat}|${p.lon}"
+        if (prefs.places.value.none { it.substringBefore('|') == p.name }) prefs.setPlaces(prefs.places.value + spec)
+        placeResults.value = emptyList()
+        showPlace(spec)
+    }
+
+    fun removePlace(spec: String) {
+        prefs.setPlaces(prefs.places.value - spec)
+        if (weatherPlace.value == spec) showPlace(null)
+    }
+
+    /** Prints a one-off forecast for any city (used by `weather <city>`). */
+    fun weatherFor(q: String) {
+        viewModelScope.launch {
+            val place = withContext(Dispatchers.IO) { runCatching { online.geocode(q).firstOrNull() }.getOrNull() }
+            if (place == null) { out("no place called '$q'", LineKind.ERR); return@launch }
+            val w = withContext(Dispatchers.IO) { runCatching { online.weather(place.lat, place.lon, prefs.fahrenheit.value) }.getOrNull() }
+            if (w == null) { out("couldn't fetch weather", LineKind.ERR); return@launch }
+            out("${w.glyph}  ${w.temp.toInt()}°${w.unit} ${w.description}  (${place.name})", LineKind.ACCENT)
+            out("   high ${w.high.toInt()}° / low ${w.low.toInt()}°${if (w.rainInHours == null) " · no rain in the next 12h" else " · rain likely in ~${w.rainInHours}h"}")
+        }
+    }
     fun reloadNews() { viewModelScope.launch { loadNews() } }
 
     private fun startSteps() {

@@ -321,6 +321,12 @@ class Prefs(context: Context) {
         sp.edit().putString("stepHistory", JSONObject(keep as Map<*, *>).toString()).apply()
     }
 
+    /** Saved weather places, each "name|lat|lon". */
+    val places = MutableStateFlow(
+        runCatching { JSONArray(sp.getString("places", "[]")).let { a -> (0 until a.length()).map { a.getString(it) } } }.getOrDefault(emptyList()),
+    )
+    fun setPlaces(v: List<String>) { places.value = v; sp.edit().putString("places", JSONArray(v).toString()).apply() }
+
     /** True exactly once, on the very first launch. */
     fun consumeFirstRun(): Boolean {
         if (sp.getBoolean("seenFirstRun", false)) return false
