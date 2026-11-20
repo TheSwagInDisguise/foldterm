@@ -345,6 +345,10 @@ class Prefs(context: Context) {
         sp.edit().putString("newsSaved", a.toString()).apply()
     }
 
+    /** World clocks: IANA zone ids. */
+    val clocks = MutableStateFlow(sp.getString("clocks", "")!!.split('|').filter { it.isNotBlank() })
+    fun setClocks(v: List<String>) { clocks.value = v; sp.edit().putString("clocks", v.joinToString("|")).apply() }
+
     /** Web search: system, duckduckgo, google, brave, startpage, kagi. */
     val searchEngine = MutableStateFlow(sp.getString("searchEngine", "system") ?: "system")
     fun setSearchEngine(v: String) { searchEngine.value = v; sp.edit().putString("searchEngine", v).apply() }

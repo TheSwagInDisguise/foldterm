@@ -619,6 +619,26 @@ class Shell(private val vm: LauncherViewModel) {
             vm.rename(app, name.ifBlank { null })
             vm.out(if (name.isBlank()) "reset ${app.label}" else "${app.label} → $name", LineKind.OK)
         },
+        Cmd("clocks", "clocks [add|rm <city>]", "world clocks for Home and the cover screen") { args, rest ->
+            val city = rest.substringAfter(' ', "").trim()
+            when (args.firstOrNull()) {
+                "add" -> {
+                    val (id, _) = Units.timeIn(city) ?: error("don't know a time zone for '$city'")
+                    if (id !in vm.prefs.clocks.value) vm.prefs.setClocks(vm.prefs.clocks.value + id)
+                    vm.out("added ${id.substringAfterLast('/').replace('_', ' ')} — show it with the world clocks card (Settings → home layout / cover screen)", LineKind.OK)
+                }
+                "rm", "remove" -> {
+                    val (id, _) = Units.timeIn(city) ?: error("don't know a time zone for '$city'")
+                    vm.prefs.setClocks(vm.prefs.clocks.value - id); vm.out("removed", LineKind.OK)
+                }
+                else -> {
+                    if (vm.prefs.clocks.value.isEmpty()) vm.out("no clocks — `clocks add tokyo`", LineKind.DIM)
+                    vm.prefs.clocks.value.forEach { id ->
+                        Units.timeIn(id.substringAfterLast('/'))?.let { (_, z) -> vm.out("  ${Units.formatTime(z, Fmt.is24).padEnd(12)} ${id.substringAfterLast('/').replace('_', ' ')}") }
+                    }
+                }
+            }
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

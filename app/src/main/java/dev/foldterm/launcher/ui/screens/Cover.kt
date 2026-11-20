@@ -52,6 +52,7 @@ val COVER_CARDS = listOf(
     "weather" to "weather",
     "tasks" to "tasks",
     "widgets" to "first widget",
+    "clocks" to "world clocks",
 )
 
 /** Home for the folded phone: large type, big targets, one column, no nested scrolling. */
@@ -69,6 +70,7 @@ fun CoverHome(vm: LauncherViewModel) {
                 "weather" -> WeatherCard(vm)
                 "tasks" -> TasksCard(vm)
                 "widgets" -> vm.prefs.widgets.value.firstOrNull()?.let { WidgetCard(vm, it, Modifier.fillMaxWidth()) }
+                "clocks" -> ClocksCard(vm)
             }
         }
         if (cards.isEmpty()) T("# no cover cards — choose some in Settings → cover screen", color = LocalTerm.current.dim)
@@ -94,6 +96,29 @@ private fun Label(text: String, extra: String? = null) {
         if (extra != null) T(" · $extra", color = t.dim, size = 12.sp)
     }
     Spacer(Modifier.height(6.dp))
+}
+
+@Composable
+internal fun ClocksCard(vm: LauncherViewModel) {
+    val t = LocalTerm.current
+    val zones by vm.prefs.clocks.collectAsStateWithLifecycle()
+    val now by vm.now.collectAsStateWithLifecycle()
+    Card {
+        Label("world clocks")
+        if (zones.isEmpty()) { T("Add cities with `clocks add tokyo`.", color = t.dim, size = 13.sp); return@Card }
+        val here = java.time.ZonedDateTime.now()
+        zones.forEach { id ->
+            val z = runCatching { java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.of(id)) }.getOrNull() ?: return@forEach
+            val diff = (z.offset.totalSeconds - here.offset.totalSeconds) / 3600.0
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    T(id.substringAfterLast('/').replace('_', ' '), weight = FontWeight.SemiBold)
+                    T("${if (diff >= 0) "+" else ""}${dev.foldterm.launcher.shell.Calc.format(diff)}h · ${z.format(java.time.format.DateTimeFormatter.ofPattern("EEE"))}", color = t.dim, size = 12.sp)
+                }
+                T(z.format(java.time.format.DateTimeFormatter.ofPattern(if (Fmt.is24) "HH:mm" else "h:mm a")), size = 22.sp, weight = FontWeight.Bold)
+            }
+        }
+    }
 }
 
 @Composable

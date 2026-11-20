@@ -110,8 +110,14 @@ fun NotesScreen(vm: LauncherViewModel) {
                 Spacer(Modifier.width(8.dp))
                 TButton("delete") { vm.deleteNote(selected.id) }
             }
-            Spacer(Modifier.height(12.dp))
-            BasicTextField(
+            Spacer(Modifier.height(8.dp))
+            var preview by remember(selected.id) { mutableStateOf(selected.text.contains("- [")) }
+            dev.foldterm.launcher.ui.Tabs(listOf("edit", "preview"), if (preview) 1 else 0, { preview = it == 1 })
+            Spacer(Modifier.height(8.dp))
+            if (preview) {
+                NotePreview(text, Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(14.dp)).background(t.panelAlt)
+                    .border(1.dp, t.border, RoundedCornerShape(14.dp)).padding(16.dp)) { updated -> text = updated; vm.updateNote(selected.id, updated) }
+            } else BasicTextField(
                 value = text,
                 onValueChange = { text = it; vm.updateNote(selected.id, it) },
                 textStyle = TextStyle(fontFamily = Mono, fontSize = 15.sp, color = t.fg, lineHeight = 22.sp),
@@ -136,6 +142,41 @@ fun NotesScreen(vm: LauncherViewModel) {
             list(Modifier.fillMaxWidth().height(260.dp))
             Spacer(Modifier.height(10.dp))
             editor(Modifier.fillMaxWidth().weight(1f))
+        }
+    }
+}
+
+/** Light markdown: # headings, - bullets, - [ ] checkboxes (tap to tick). */
+@Composable
+private fun NotePreview(text: String, modifier: Modifier, onChange: (String) -> Unit) {
+    val t = LocalTerm.current
+    val lines = text.lines()
+    Column(modifier.verticalScroll(rememberScrollState())) {
+        lines.forEachIndexed { i, line ->
+            val trimmed = line.trimStart()
+            val box = Regex("^[-*] \\[( |x|X)\\] ?(.*)$").find(trimmed)
+            when {
+                box != null -> {
+                    val done = box.groupValues[1] != " "
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable {
+                            val toggled = line.replaceFirst(if (done) Regex("\\[[xX]\\]") else Regex("\\[ \\]"), if (done) "[ ]" else "[x]")
+                            onChange(lines.toMutableList().apply { set(i, toggled) }.joinToString("\n"))
+                        }.padding(vertical = 4.dp),
+                    ) {
+                        T(if (done) "[x]" else "[ ]", color = if (done) t.ok else t.accent, weight = FontWeight.Bold)
+                        Spacer(Modifier.width(10.dp))
+                        T(box.groupValues[2], color = if (done) t.dim else t.fg)
+                    }
+                }
+                trimmed.startsWith("# ") -> T(trimmed.removePrefix("# "), size = 22.sp, weight = FontWeight.Bold, modifier = Modifier.padding(vertical = 6.dp))
+                trimmed.startsWith("## ") -> T(trimmed.removePrefix("## "), size = 18.sp, weight = FontWeight.Bold, color = t.accent, modifier = Modifier.padding(vertical = 4.dp))
+                trimmed.startsWith("- ") || trimmed.startsWith("* ") -> Row(Modifier.padding(vertical = 2.dp)) {
+                    T("  • ", color = t.accent); T(trimmed.drop(2))
+                }
+                trimmed.isBlank() -> Spacer(Modifier.height(10.dp))
+                else -> T(line, modifier = Modifier.padding(vertical = 2.dp))
+            }
         }
     }
 }

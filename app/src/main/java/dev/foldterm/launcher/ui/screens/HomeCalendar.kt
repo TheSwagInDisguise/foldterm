@@ -96,6 +96,7 @@ val HOME_CARDS = listOf(
     "tasks" to "tasks",
     "notes" to "latest note",
     "clock" to "big clock",
+    "clocks" to "world clocks",
 )
 private val STRETCHY = setOf("agenda", "summary", "widgets", "tasks", "notes")
 
@@ -128,6 +129,7 @@ private fun HomeColumn(vm: LauncherViewModel, cards: List<String>, modifier: Mod
                 "media" -> MediaCard(vm)
                 "weather" -> WeatherCard(vm)
                 "clock" -> ClockCard(vm)
+                "clocks" -> ClocksCard(vm)
             }
         }
         if (cards.none { it in STRETCHY }) Spacer(Modifier.weight(1f))
