@@ -395,6 +395,16 @@ class Prefs(context: Context) {
     val pinnedNote = MutableStateFlow(sp.getLong("pinnedNote", 0L))
     fun setPinnedNote(id: Long) { pinnedNote.value = id; sp.edit().putLong("pinnedNote", id).apply() }
 
+    fun loadStations(): List<Station> = runCatching {
+        val raw = sp.getString("stations", null) ?: return Radio.DEFAULTS
+        val a = JSONArray(raw)
+        (0 until a.length()).map { a.getJSONObject(it).let { o -> Station(o.getString("name"), o.getString("url")) } }
+    }.getOrDefault(Radio.DEFAULTS)
+    fun saveStations(v: List<Station>) {
+        val a = JSONArray(); v.forEach { a.put(JSONObject().put("name", it.name).put("url", it.url)) }
+        sp.edit().putString("stations", a.toString()).apply()
+    }
+
     fun gameBest(key: String): Int = sp.getInt("best_$key", 0)
     fun setGameBest(key: String, v: Int) { sp.edit().putInt("best_$key", v).apply() }
 

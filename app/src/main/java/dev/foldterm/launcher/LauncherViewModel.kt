@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.48.0" to listOf("Radio pane: internet radio (SomaFM presets, add your own streams); `radio defcon`, `radio stop`"),
     "0.47.0" to listOf("Games pane: serpent, mines and a typing sprint (`cd games`)"),
     "0.46.0" to listOf("`email maya lunch friday?` pre-fills the subject"),
     "0.45.0" to listOf("percentages in plain English: 18% of 240 · 15% off 80 · 64.50 + 15% · what % is 30 of 120"),
@@ -239,6 +240,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        radio.release()
         appsRepo.unregister(appsCallback)
         stepStop?.invoke()
     }
@@ -651,6 +653,19 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     val iconPacks = dev.foldterm.launcher.data.IconPacks(app)
     val controls = dev.foldterm.launcher.data.Controls(app)
+    val radio = dev.foldterm.launcher.data.Radio(app)
+    val stations = MutableStateFlow(prefs.loadStations())
+
+    fun addStation(s: dev.foldterm.launcher.data.Station) {
+        stations.value = stations.value.filter { it.url != s.url } + s
+        prefs.saveStations(stations.value)
+    }
+
+    fun removeStation(s: dev.foldterm.launcher.data.Station) {
+        if (radio.playing.value?.url == s.url) radio.stop()
+        stations.value = stations.value.filter { it.url != s.url }
+        prefs.saveStations(stations.value)
+    }
     val screenTime = dev.foldterm.launcher.data.ScreenTime(app)
     val usage = MutableStateFlow<dev.foldterm.launcher.data.UsageReport?>(null)
 

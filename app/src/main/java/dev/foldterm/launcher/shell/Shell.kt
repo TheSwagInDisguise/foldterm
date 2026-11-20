@@ -786,6 +786,18 @@ class Shell(private val vm: LauncherViewModel) {
             list.forEach { vm.out("  ${it.name.padEnd(22)} ${it.phone ?: "(no number)"}", LineKind.ERR) }
         },
         Cmd("tip", "tip", "a random FoldTerm tip", setOf("tips", "fortune")) { _, _ -> vm.out("tip: ${TIPS.random()}", LineKind.ACCENT) },
+        Cmd("radio", "radio [station|stop|pause]", "internet radio", setOf("fm")) { _, rest ->
+            when (rest.lowercase()) {
+                "" -> { vm.go(Section.RADIO); vm.shellOpen.value = false }
+                "stop", "off" -> { vm.radio.stop(); vm.out("radio off", LineKind.OK) }
+                "pause" -> vm.radio.pause()
+                else -> {
+                    val s = vm.stations.value.map { it to score(it.name, rest) }.filter { it.second > 0 }.maxByOrNull { it.second }?.first
+                        ?: error("no station matching '$rest'")
+                    vm.radio.play(s); vm.out("≋ tuning in to ${s.name}", LineKind.OK)
+                }
+            }
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
