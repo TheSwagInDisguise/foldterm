@@ -81,12 +81,24 @@ Anything that isn't a command or a match becomes a web search.
 
 ## Install
 
-1. Download `foldterm-x.y.z.apk` from **[Releases](https://github.com/TheSwagInDisguise/foldterm/releases/latest)** and open it on your phone. You may need to allow installs from your browser.
+Each release has two APKs, signed with the same key so you can switch between them without uninstalling:
+
+| APK | Use it when |
+|---|---|
+| `foldterm-x.y.z.apk` (full) | You want the Mail, Chat and now-playing panes, which are built from your notifications |
+| `foldterm-x.y.z-lite.apk` | Your phone refuses the full APK with *"this app requests access to sensitive data"* |
+
+1. Download an APK from **[Releases](https://github.com/TheSwagInDisguise/foldterm/releases/latest)** and open it on your phone. You may need to allow installs from your browser.
 2. Launch **FoldTerm** and accept the permission prompts. You can run `grant` later to ask again.
 3. **Settings → home app → set default** makes FoldTerm your home screen.
-4. **Settings → notifs → grant** turns on the Mail, Chat and now-playing panes.
+4. *(full only)* **Settings → notifs → grant** turns on Mail, Chat and now playing.
 
 Requires Android 10 (API 29) or newer. Every permission is optional; a pane without its permission shows a one-tap fix.
+
+### Troubleshooting
+
+- **"Requests access to sensitive data" / install blocked.** Google Play Protect flags sideloaded apps that can read notifications, and in some countries it blocks them outright. Install the **lite** APK instead. If you want the full edition, open the Play Store, tap your profile → **Play Protect** → ⚙ → turn off **Scan apps with Play Protect**, install the full APK, then turn scanning back on.
+- **Notification access switch is greyed out.** Android restricts this for sideloaded apps. Go to **Settings → Apps → FoldTerm → ⋮ → Allow restricted settings**, then try again.
 
 ## Privacy
 

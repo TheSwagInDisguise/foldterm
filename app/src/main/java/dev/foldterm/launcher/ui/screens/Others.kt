@@ -98,9 +98,19 @@ fun MessagesScreen(vm: LauncherViewModel, kind: NotifKind) {
         Panel(Modifier.fillMaxSize(), title = label) {
             T("$ tail -f /dev/notifications", color = t.accent)
             Spacer(Modifier.height(6.dp))
+            if (!BuildConfig.NOTIFICATIONS) {
+                T("not available in the lite edition", color = t.err)
+                Spacer(Modifier.height(12.dp))
+                T("This pane is built from your apps' notifications. The lite APK leaves notification access out so it installs without a Play Protect block. Install the full APK from the releases page to use it.", color = t.dim)
+                Spacer(Modifier.height(16.dp))
+                TButton("open $label app", primary = true) { openCategoryApp(vm, kind) }
+                return@Panel
+            }
             T("permission denied", color = t.err)
             Spacer(Modifier.height(12.dp))
-            T("FoldTerm reads $label from your apps' notifications — it never logs in to your accounts. Grant notification access to fill this pane (and to enable the now-playing widget).", color = t.dim)
+            T("FoldTerm reads $label from your apps' notifications. It never signs in to your accounts. Grant notification access to fill this pane (and to enable the now-playing widget).", color = t.dim)
+            Spacer(Modifier.height(8.dp))
+            T("Switch greyed out? App info → ⋮ → Allow restricted settings, then try again.", color = t.dim, size = 12.sp)
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TButton("grant access", primary = true) { vm.openNotificationAccess() }
@@ -543,8 +553,12 @@ fun SettingsScreen(vm: LauncherViewModel) {
                     }
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         T("notifs", modifier = Modifier.width(110.dp))
-                        T(if (access) "granted" else "denied", color = if (access) t.ok else t.err, modifier = Modifier.weight(1f))
-                        TButton(if (access) "manage" else "grant") { vm.openNotificationAccess() }
+                        if (BuildConfig.NOTIFICATIONS) {
+                            T(if (access) "granted" else "denied", color = if (access) t.ok else t.err, modifier = Modifier.weight(1f))
+                            TButton(if (access) "manage" else "grant") { vm.openNotificationAccess() }
+                        } else {
+                            T("lite edition", color = t.dim, modifier = Modifier.weight(1f))
+                        }
                     }
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         T("home app", modifier = Modifier.width(110.dp))

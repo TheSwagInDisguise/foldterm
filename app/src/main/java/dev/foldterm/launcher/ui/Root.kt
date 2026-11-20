@@ -532,6 +532,7 @@ private fun Dock(vm: LauncherViewModel, modifier: Modifier) {
                         T(
                             when {
                                 cur != null -> cur.artist.ifBlank { if (cur.isPlaying) "playing" else "paused" }
+                                !dev.foldterm.launcher.BuildConfig.NOTIFICATIONS -> "full edition only"
                                 !access -> "tap to connect"
                                 else -> "nothing playing"
                             },

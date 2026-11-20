@@ -411,7 +411,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         NotificationStore.markRemoved(n.key)
     }
 
-    fun openNotificationAccess() = start(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    fun openNotificationAccess() {
+        if (!BuildConfig.NOTIFICATIONS) {
+            out("lite edition: mail, chat and now playing need the full APK", LineKind.ERR)
+            shellOpen.value = true
+            return
+        }
+        out("if the switch is greyed out: App info → ⋮ → Allow restricted settings, then try again", LineKind.DIM)
+        start(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    }
 
     fun requestDefaultHome() {
         uiRequests.tryEmit(UiRequest.RoleHome)

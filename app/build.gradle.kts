@@ -31,6 +31,21 @@ android {
         }
     }
 
+    // "full" reads notifications (Mail, Chat, now playing). "lite" leaves out the
+    // notification listener, which Play Protect blocks for sideloaded apps in some regions.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("full") {
+            dimension = "edition"
+            buildConfigField("boolean", "NOTIFICATIONS", "true")
+        }
+        create("lite") {
+            dimension = "edition"
+            buildConfigField("boolean", "NOTIFICATIONS", "false")
+            versionNameSuffix = "-lite"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
