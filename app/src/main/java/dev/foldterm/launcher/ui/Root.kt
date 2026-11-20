@@ -298,6 +298,22 @@ private fun RenameDialog(vm: LauncherViewModel) {
     )
 }
 
+/** The app's own shortcuts at the top of its long-press menu. */
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.ShortcutItems(vm: LauncherViewModel, app: AppEntry, open: Boolean, close: () -> Unit) {
+    val t = LocalTerm.current
+    val shortcuts = remember(open, app.uniqueKey) { if (open) vm.appsRepo.shortcuts(app) else emptyList() }
+    if (shortcuts.isEmpty()) return
+    shortcuts.forEach { sc ->
+        DropdownMenuItem(
+            leadingIcon = { AsyncBitmap(sc.id + app.uniqueKey, Modifier.size(22.dp)) { vm.appsRepo.shortcutIcon(sc) } },
+            text = { T((sc.shortLabel ?: sc.longLabel ?: sc.id).toString(), maxLines = 1) },
+            onClick = { close(); vm.startShortcut(sc) },
+        )
+    }
+    Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(1.dp).background(t.border))
+}
+
 private val sectionKeys = listOf(Key.One, Key.Two, Key.Three, Key.Four, Key.Five, Key.Six, Key.Seven, Key.Eight, Key.Nine)
 
 @Composable
@@ -554,6 +570,7 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
                         SuggestionKind.MESSAGE -> "msg"
                         SuggestionKind.ALIAS -> "als"
                         SuggestionKind.PAIR -> "par"
+                        SuggestionKind.SHORTCUT -> "sc"
                     }
                     T(tag, color = t.dim, size = 12.sp, modifier = Modifier.width(40.dp))
                     if (s.app != null) {
@@ -746,6 +763,7 @@ private fun DockIcon(vm: LauncherViewModel, app: AppEntry, tile: androidx.compos
             Badge(unread, Modifier.align(Alignment.TopEnd))
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            ShortcutItems(vm, app, menu) { menu = false }
             DropdownMenuItem(text = { T("unpin ${app.label}") }, onClick = { menu = false; vm.unpinFromDock(app) })
             DropdownMenuItem(text = { T("split with…") }, onClick = { menu = false; vm.splitPick.value = app; vm.drawerOpen.value = true })
             DropdownMenuItem(text = { T("pop-up window") }, onClick = { menu = false; vm.popup(app) })
@@ -873,6 +891,7 @@ private fun AppDrawer(vm: LauncherViewModel) {
                             if (app.isWork) T("work", color = t.accent2, size = 10.sp, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            ShortcutItems(vm, app, menu) { menu = false }
                             DropdownMenuItem(text = { T("split with…") }, onClick = { menu = false; filter = ""; vm.splitPick.value = app })
                             DropdownMenuItem(text = { T("pop-up window") }, onClick = { menu = false; vm.popup(app) })
                             DropdownMenuItem(text = { T("pin to dock") }, onClick = { menu = false; vm.pinToDock(app) })

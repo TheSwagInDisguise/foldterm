@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.25.1" to listOf("app shortcuts: long-press an app for its shortcuts; the prompt finds them too (needs FoldTerm as home app)"),
     "0.24.0" to listOf("saved weather places: + add place in the Weather pane", "`weather tokyo` prints anywhere's forecast"),
     "0.23.0" to listOf("Calendar week view: seven day columns on one timeline; tap a slot to add an event"),
     "0.22.0" to listOf(

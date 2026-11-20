@@ -17,7 +17,7 @@ enum class LineKind { CMD, OUT, DIM, OK, ERR, ACCENT }
 
 data class Line(val text: String, val kind: LineKind)
 
-enum class SuggestionKind { COMMAND, APP, CONTACT, SECTION, WEB, EVENT, NOTE, MESSAGE, ALIAS, PAIR }
+enum class SuggestionKind { COMMAND, APP, CONTACT, SECTION, WEB, EVENT, NOTE, MESSAGE, ALIAS, PAIR, SHORTCUT }
 
 data class Suggestion(
     val kind: SuggestionKind,
@@ -169,6 +169,16 @@ class Shell(private val vm: LauncherViewModel) {
         rankApps(q).take(5).forEach { app ->
             out += Suggestion(SuggestionKind.APP, app.label, if (app.isWork) "work profile" else app.packageName, app) { vm.launch(app) }
         }
+        if (q.length >= 3) {
+            vm.shortcutIndex.value.mapNotNull { (app, sc) ->
+                val label = (sc.shortLabel ?: sc.longLabel ?: "").toString()
+                val best = maxOf(score(label, q), score("${app.label} $label", q))
+                if (best >= 50) Triple(app, sc, label) to best else null
+            }.sortedByDescending { it.second }.take(3).forEach { (tr, _) ->
+                val (app, sc, label) = tr
+                out += Suggestion(SuggestionKind.SHORTCUT, label, app.label, app) { vm.startShortcut(sc) }
+            }
+        }
         rankContacts(q).take(3).forEach { c ->
             out += Suggestion(SuggestionKind.CONTACT, c.name, c.phone ?: c.email ?: c.company ?: "contact") {
                 vm.go(Section.PEOPLE); vm.selectContact(c); vm.shellOpen.value = false; vm.input.value = ""
@@ -210,6 +220,7 @@ class Shell(private val vm: LauncherViewModel) {
                 SuggestionKind.SECTION -> 1
                 SuggestionKind.ALIAS, SuggestionKind.PAIR -> 0
                 SuggestionKind.CONTACT -> 3
+                SuggestionKind.SHORTCUT -> 2
                 SuggestionKind.EVENT, SuggestionKind.NOTE, SuggestionKind.MESSAGE -> 4
                 SuggestionKind.WEB -> if (it.label.startsWith("open ")) 1 else 9
             }
