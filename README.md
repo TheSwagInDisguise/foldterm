@@ -101,7 +101,7 @@ FoldTerm has no account, no analytics and no backend.
 Everything is built by GitHub Actions ([`build.yml`](.github/workflows/build.yml)):
 
 - **Every push and pull request** builds a release APK and attaches it to the workflow run as an artifact.
-- **New version on `main`**: when [`version.txt`](version.txt) holds a version with no release yet, CI builds, signs, tags `vX.Y.Z` and publishes a GitHub Release with the APK. Pushing a `v*` tag does the same. CI never publishes an unsigned APK.
+- **New version on `main`**: when [`version.txt`](version.txt) holds a version with no release yet, CI builds, signs, tags `vX.Y.Z` and publishes a GitHub Release with the APK. Pushing a `v*` tag does the same. Without the signing secrets the build still passes, but the release is skipped (with a warning), because Android won't install an unsigned APK.
 
 ### Signing key
 
