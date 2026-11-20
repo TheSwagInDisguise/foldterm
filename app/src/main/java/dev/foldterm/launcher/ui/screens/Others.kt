@@ -650,6 +650,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
     val engine by vm.prefs.searchEngine.collectAsStateWithLifecycle()
+    val summaryHidden by vm.prefs.summaryHidden.collectAsStateWithLifecycle()
     val autoTheme by vm.prefs.autoTheme.collectAsStateWithLifecycle()
     val dayTheme by vm.prefs.dayTheme.collectAsStateWithLifecycle()
     val nightTheme by vm.prefs.nightTheme.collectAsStateWithLifecycle()
@@ -915,6 +916,17 @@ fun SettingsScreen(vm: LauncherViewModel) {
                             .clickable { vm.prefs.setHomeLayout(listOf("happening:L", "agenda:L", "summary:R")) }.padding(6.dp))
                     }
                     T("cards on the unfolded Home: order, column (L/R) and on/off", color = t.dim, size = 12.sp)
+                    Spacer(Modifier.height(6.dp))
+                    T("summary rows", color = t.dim, size = 12.sp)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+                        SUMMARY_ROWS.forEach { r ->
+                            val on = r !in summaryHidden
+                            Box(
+                                Modifier.clip(RoundedCornerShape(50)).background(if (on) t.button else t.chip).clickable { vm.prefs.toggleSummaryRow(r) }
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                            ) { T(r.lowercase(), color = if (on) t.onButton else t.dim, size = 12.sp) }
+                        }
+                    }
                     Spacer(Modifier.height(6.dp))
                     run {
                         val enabled = homeLayout

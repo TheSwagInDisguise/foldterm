@@ -374,6 +374,18 @@ class Prefs(context: Context) {
     fun setDayTheme(v: String) { dayTheme.value = v; sp.edit().putString("dayTheme", v).apply() }
     fun setNightTheme(v: String) { nightTheme.value = v; sp.edit().putString("nightTheme", v).apply() }
 
+    val hiddenCalendars = MutableStateFlow(sp.getStringSet("hiddenCalendars", emptySet())!!.toSet())
+    fun toggleCalendar(name: String) {
+        val next = hiddenCalendars.value.toMutableSet().apply { if (!add(name)) remove(name) }
+        hiddenCalendars.value = next; sp.edit().putStringSet("hiddenCalendars", next).apply()
+    }
+    /** Home summary rows the user switched off (by title). */
+    val summaryHidden = MutableStateFlow(sp.getStringSet("summaryHidden", emptySet())!!.toSet())
+    fun toggleSummaryRow(title: String) {
+        val next = summaryHidden.value.toMutableSet().apply { if (!add(title)) remove(title) }
+        summaryHidden.value = next; sp.edit().putStringSet("summaryHidden", next).apply()
+    }
+
     /** Text size multiplier on top of the system font scale. */
     val textScale = MutableStateFlow(sp.getFloat("textScale", 1f))
     fun setTextScale(v: Float) { textScale.value = v; sp.edit().putFloat("textScale", v).apply() }

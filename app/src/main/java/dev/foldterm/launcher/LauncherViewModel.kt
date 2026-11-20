@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.37.0" to listOf("Calendar → calendars: hide calendars you don't want to see", "Settings → home layout → summary rows: choose what the summary shows"),
     "0.36.0" to listOf("🎤 in the prompt: say a command (\"timer 5 minutes\", \"open spotify\")", "quick actions card for Home and the cover screen"),
     "0.35.0" to listOf("FoldTerm clock screen saver: `screensaver`, then pick “FoldTerm clock”"),
     "0.34.0" to listOf("type a setting's name (wallpaper, icon pack, bluetooth, developer options…) to jump to it"),
@@ -312,9 +313,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Every calendar seen in the loaded range, hidden or not. */
+    val calendarNames = MutableStateFlow<List<String>>(emptyList())
+
     suspend fun loadEvents() {
         val start = calStart.value
-        events.value = withContext(Dispatchers.IO) { calendarRepo.load(start, Fmt.addDays(start, 42)) }
+        val all = withContext(Dispatchers.IO) { calendarRepo.load(start, Fmt.addDays(start, 42)) }
+        calendarNames.value = all.map { it.calendarName }.filter { it.isNotBlank() }.distinct().sorted()
+        val hidden = prefs.hiddenCalendars.value
+        events.value = all.filter { it.calendarName !in hidden }
+    }
+
+    fun toggleCalendar(name: String) {
+        prefs.toggleCalendar(name)
+        viewModelScope.launch { loadEvents() }
     }
 
     fun shiftCalendar(days: Int?) {

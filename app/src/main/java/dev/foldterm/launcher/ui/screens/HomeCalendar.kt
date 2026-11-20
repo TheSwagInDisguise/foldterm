@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -311,6 +312,8 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
         modifier, title = "summary",
         trailing = { T("generated on-device · ${Fmt.time(now)}", color = t.dim, size = 12.sp) },
     ) {
+        val hiddenRows by vm.prefs.summaryHidden.collectAsStateWithLifecycle()
+        CompositionLocalProvider(LocalSummaryHidden provides hiddenRows) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
             SummaryRow("♥", "Health", t.err, onClick = { vm.go(Section.HEALTH) }) {
                 val s = steps.steps
@@ -321,7 +324,6 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
                     else -> "%,d of %,d steps so far. %s".format(s, goal, if (s >= goal) "Goal reached." else "${Fmt.bar(s.toFloat() / goal, 12)}")
                 }
             }
-            Divider()
             SummaryRow("☁", "Weather", t.warn, onClick = { vm.go(Section.WEATHER) }) {
                 val w = weather
                 if (w == null) wStatus.ifBlank { "Fetching forecast…" }
@@ -333,7 +335,6 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
                     append('.')
                 }
             }
-            Divider()
             val muted by vm.prefs.mutedApps.collectAsStateWithLifecycle()
             val mail = notifs.count { !it.removed && it.kind == NotifKind.MAIL && it.pkg !in muted }
             val chat = notifs.count { !it.removed && it.kind == NotifKind.CHAT && it.pkg !in muted }
@@ -345,19 +346,16 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
                     "$mail mail, $chat chat. ${latest?.let { "Latest: ${it.title} — ${it.text.take(80)}" } ?: ""}"
                 }
             }
-            Divider()
             SummaryRow("≡", "News", t.accent3, onClick = { vm.go(Section.NEWS) }) {
                 val top = news.firstOrNull()
                 if (top == null) "No headlines yet." else "Latest: ${top.title} (${top.source}). ${news.size - 1} more stories today."
             }
-            Divider()
             val open = tasks.filter { !it.done }
             SummaryRow("✓", "Tasks", t.ok, onClick = { vm.go(Section.CALENDAR) }) {
                 if (open.isEmpty()) "Nothing on the list." else "${open.size} to do. Next: ${open.first().text}."
             }
             val bdays = remember(contacts) { vm.upcomingBirthdays(14) }
             if (bdays.isNotEmpty()) {
-                Divider()
                 SummaryRow("✦", "Birthdays", t.accent3, onClick = { vm.go(Section.PEOPLE); vm.selectContact(bdays.first().first) }) {
                     bdays.take(3).joinToString(", ") { (c, d) ->
                         "${c.name} ${when (d) { 0 -> "today 🎂"; 1 -> "tomorrow"; else -> "in $d days" }}"
@@ -366,20 +364,17 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
             }
             val alarm = remember(now) { vm.nextAlarm() }
             if (alarm != null && alarm - now < 24 * 3_600_000L) {
-                Divider()
                 SummaryRow("⏰", "Next alarm", t.warn, onClick = { vm.start(android.content.Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS)) }) {
                     "${Fmt.dayLabel(alarm, now)} at ${Fmt.time(alarm)} (${Fmt.until(alarm, now)})."
                 }
             }
             usage?.let { u ->
-                Divider()
                 SummaryRow("⏱", "Screen time", t.accent2, onClick = { vm.go(Section.USAGE) }) {
                     val top = u.apps.firstOrNull()
                     "${Fmt.duration(u.totalMs).ifBlank { "Under a minute" }} so far, ${u.unlocks} unlocks.${top?.let { " Most used: ${vm.appLabelForPackage(it.pkg)} (${Fmt.duration(it.ms)})." } ?: ""}"
                 }
             }
             vitals?.let { v ->
-                Divider()
                 SummaryRow("⚡", "Device", t.accent, onClick = { vm.go(Section.HEALTH) }) {
                     val full = if (v.charging) vm.chargeTimeLeft() else null
                     "Battery ${v.battery}%${if (v.charging) " and charging${full?.let { ", full in ${Fmt.duration(it)}" } ?: ""}" else ""}. ${Fmt.gb(v.storageFreeGb)} storage free."
@@ -387,11 +382,19 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
             }
         }
     }
+    }
 }
+
+/** Order and titles of the Home summary rows (used for show/hide in Settings). */
+val SUMMARY_ROWS = listOf("Health", "Weather", "Inbox", "News", "Tasks", "Birthdays", "Next alarm", "Screen time", "Device")
+private val LocalSummaryHidden = androidx.compose.runtime.staticCompositionLocalOf { emptySet<String>() }
 
 @Composable
 private fun SummaryRow(glyph: String, title: String, color: Color, onClick: () -> Unit, body: () -> String) {
     val t = LocalTerm.current
+    val hidden = LocalSummaryHidden.current
+    if (title in hidden) return
+    if (SUMMARY_ROWS.firstOrNull { it !in hidden } != title) Divider()
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 6.dp, horizontal = 4.dp),
     ) {
@@ -463,9 +466,29 @@ private fun CalendarListPanel(vm: LauncherViewModel, modifier: Modifier) {
         }
         Spacer(Modifier.height(8.dp))
         var quick by remember { mutableStateOf("") }
-        Field(quick, { quick = it }, "quick add · fri 3pm dentist", Modifier.fillMaxWidth(), onDone = {
-            if (quick.isNotBlank()) { vm.execShell("event $quick"); vm.shellOpen.value = false; quick = "" }
-        })
+        var showCals by remember { mutableStateOf(false) }
+        val calNames by vm.calendarNames.collectAsStateWithLifecycle()
+        val hiddenCals by vm.prefs.hiddenCalendars.collectAsStateWithLifecycle()
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Field(quick, { quick = it }, "quick add · fri 3pm dentist", Modifier.weight(1f), onDone = {
+                if (quick.isNotBlank()) { vm.execShell("event $quick"); vm.shellOpen.value = false; quick = "" }
+            })
+            Spacer(Modifier.width(8.dp))
+            TButton(if (showCals) "calendars ▴" else "calendars ▾") { showCals = !showCals }
+        }
+        if (showCals) {
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                calNames.forEach { name ->
+                    val on = name !in hiddenCals
+                    Box(
+                        Modifier.clip(RoundedCornerShape(50)).background(if (on) t.button else t.chip).clickable { vm.toggleCalendar(name) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) { T(name, color = if (on) t.onButton else t.dim, size = 12.sp, maxLines = 1) }
+                }
+                if (calNames.isEmpty()) T("no calendars found in this range", color = t.dim, size = 12.sp)
+            }
+        }
         Spacer(Modifier.height(8.dp))
         if (perms["calendar"] != true) {
             Empty("calendar permission denied", "grant") { vm.requestPermission("calendar") }
