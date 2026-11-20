@@ -64,6 +64,7 @@ shot settings        --es theme pastel --es section settings
 shot habits          --es theme phosphor --es section habits
 shot games           --es section games
 shot radio           --es theme amber --es section radio
+shot money           --es theme phosphor --es section money
 
 adb emu fold || true
 sleep 6

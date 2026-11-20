@@ -339,6 +339,7 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
     val vitals by vm.vitals.collectAsStateWithLifecycle()
     val usage by vm.usage.collectAsStateWithLifecycle()
     val contacts by vm.contacts.collectAsStateWithLifecycle()
+    val expenses by vm.expenses.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
 
     Panel(
@@ -407,6 +408,14 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
                     "${Fmt.duration(u.totalMs).ifBlank { "Under a minute" }} so far, ${u.unlocks} unlocks.${top?.let { " Most used: ${vm.appLabelForPackage(it.pkg)} (${Fmt.duration(it.ms)})." } ?: ""}"
                 }
             }
+            val spentMonth = expenses.filter { it.time >= vm.monthStart() }.sumOf { it.amount }
+            if (spentMonth > 0) {
+                val cur = vm.prefs.currencySymbol.value
+                val budget = vm.prefs.budget.value
+                SummaryRow("$", "Money", t.ok, onClick = { vm.go(Section.MONEY) }) {
+                    "$cur${Fmt.money(spentMonth)} spent this month" + if (budget > 0) " (${(spentMonth / budget * 100).toInt()}% of budget)." else "."
+                }
+            }
             vitals?.let { v ->
                 SummaryRow("⚡", "Device", t.accent, onClick = { vm.go(Section.HEALTH) }) {
                     val full = if (v.charging) vm.chargeTimeLeft() else null
@@ -419,7 +428,7 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
 }
 
 /** Order and titles of the Home summary rows (used for show/hide in Settings). */
-val SUMMARY_ROWS = listOf("Health", "Weather", "Inbox", "News", "Tasks", "Birthdays", "Next alarm", "Screen time", "Device")
+val SUMMARY_ROWS = listOf("Health", "Weather", "Inbox", "News", "Tasks", "Birthdays", "Next alarm", "Screen time", "Money", "Device")
 private val LocalSummaryHidden = androidx.compose.runtime.staticCompositionLocalOf { emptySet<String>() }
 
 @Composable

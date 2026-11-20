@@ -85,6 +85,8 @@ object Fmt {
         }
     }
 
+    fun money(v: Double): String = if (v == Math.floor(v) && v < 1e9) "%,.0f".format(v) else "%,.2f".format(v)
+
     fun gb(v: Double) = String.format(Locale.US, "%.1fG", v)
 
     fun bar(fraction: Float, width: Int = 20): String {

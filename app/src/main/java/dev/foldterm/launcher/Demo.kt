@@ -131,5 +131,13 @@ fun LauncherViewModel.loadDemo() {
         dev.foldterm.launcher.data.Habit(3, "No phone after 10pm", daysBack(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)),
         dev.foldterm.launcher.data.Habit(4, "Practice piano", daysBack(2, 4)),
     )
+    fun ex(id: Long, amt: Double, note: String, daysAgo: Int) =
+        dev.foldterm.launcher.data.Expense(id, amt, note.substringBefore(' '), note, now - daysAgo * 24 * h - id * 37 * m)
+    expenses.value = listOf(
+        ex(1, 14.5, "lunch with maya", 0), ex(2, 4.8, "coffee", 0), ex(3, 86.2, "groceries weekly shop", 1), ex(4, 12.0, "transport tap card", 1),
+        ex(5, 32.0, "dinner pizza", 2), ex(6, 4.8, "coffee", 3), ex(7, 59.0, "fuel", 4), ex(8, 18.9, "books paperback", 5),
+        ex(9, 64.3, "groceries", 8), ex(10, 9.99, "subscriptions music", 10), ex(11, 45.0, "gym pass", 12),
+    )
+    prefs.setBudget(1200.0)
     prefs.setUserName("Alex")
 }

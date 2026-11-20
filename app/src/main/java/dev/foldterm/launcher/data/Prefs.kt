@@ -419,6 +419,19 @@ class Prefs(context: Context) {
         sp.edit().putString("habits", a.toString()).apply()
     }
 
+    val budget = MutableStateFlow(sp.getFloat("budget", 0f).toDouble())
+    fun setBudget(v: Double) { budget.value = v; sp.edit().putFloat("budget", v.toFloat()).apply() }
+    val currencySymbol = MutableStateFlow(sp.getString("currencySymbol", null) ?: runCatching { java.util.Currency.getInstance(Locale.getDefault()).symbol.takeIf { it.length <= 3 } }.getOrNull() ?: "$")
+    fun loadExpenses(): List<Expense> = runCatching {
+        val a = JSONArray(sp.getString("expenses", "[]"))
+        (0 until a.length()).map { i -> a.getJSONObject(i).let { o -> Expense(o.getLong("id"), o.getDouble("amount"), o.optString("category", "other"), o.optString("note"), o.getLong("time")) } }
+    }.getOrDefault(emptyList())
+    fun saveExpenses(v: List<Expense>) {
+        val a = JSONArray()
+        v.take(2000).forEach { a.put(JSONObject().put("id", it.id).put("amount", it.amount).put("category", it.category).put("note", it.note).put("time", it.time)) }
+        sp.edit().putString("expenses", a.toString()).apply()
+    }
+
     fun gameBest(key: String): Int = sp.getInt("best_$key", 0)
     fun setGameBest(key: String, v: Int) { sp.edit().putInt("best_$key", v).apply() }
 

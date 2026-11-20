@@ -812,6 +812,10 @@ class Shell(private val vm: LauncherViewModel) {
                 }
             }
         },
+        Cmd("spent", "spent <amount> <what>", "log spending, e.g. spent 12.50 lunch", setOf("spend", "paid", "expense")) { _, rest ->
+            if (rest.isBlank()) { vm.go(Section.MONEY); vm.shellOpen.value = false; return@Cmd }
+            vm.logExpense(rest)
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

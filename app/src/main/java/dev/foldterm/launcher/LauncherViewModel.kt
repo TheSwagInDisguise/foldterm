@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.51.0" to listOf("Money pane: log spending (`spent 12.50 lunch`), monthly budget, categories and a 14-day chart"),
     "0.50.0" to listOf("Habits pane: daily check-ins, streaks and a 30-day rate; habits card for Home and cover", "`habit add read`, `habit done read`, `habits`"),
     "0.49.0" to listOf("agenda rows always show the event title", "status bar icons match FoldTerm's theme"),
     "0.48.0" to listOf("Radio pane: internet radio (SomaFM presets, add your own streams); `radio defcon`, `radio stop`"),
@@ -657,6 +658,28 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val controls = dev.foldterm.launcher.data.Controls(app)
     val radio = dev.foldterm.launcher.data.Radio(app)
     val habits = MutableStateFlow(prefs.loadHabits())
+    val expenses = MutableStateFlow(prefs.loadExpenses().sortedByDescending { it.time })
+
+    fun monthStart(): Long = java.util.Calendar.getInstance().apply {
+        set(java.util.Calendar.DAY_OF_MONTH, 1); set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+        set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    /** "12.50 lunch with maya" → amount 12.50, category "lunch", note "lunch with maya". */
+    fun logExpense(text: String): Boolean {
+        val m = Regex("^[^\\d-]?(\\d[\\d,]*\\.?\\d*)\\s*(.*)$").find(text.trim()) ?: run { out("try: spent 12.50 lunch", LineKind.ERR); return false }
+        val amount = m.groupValues[1].replace(",", "").toDoubleOrNull() ?: return false
+        val note = m.groupValues[2].trim()
+        val category = note.substringBefore(' ').lowercase().ifBlank { "other" }
+        expenses.value = listOf(dev.foldterm.launcher.data.Expense(System.currentTimeMillis(), amount, category, note, System.currentTimeMillis())) + expenses.value
+        prefs.saveExpenses(expenses.value)
+        val month = expenses.value.filter { it.time >= monthStart() }.sumOf { it.amount }
+        val cur = prefs.currencySymbol.value
+        out("logged $cur${Fmt.money(amount)} ${note.ifBlank { "" }} — $cur${Fmt.money(month)} this month${prefs.budget.value.takeIf { it > 0 }?.let { " of $cur${Fmt.money(it)}" } ?: ""}", LineKind.OK)
+        return true
+    }
+
+    fun removeExpense(id: Long) { expenses.value = expenses.value.filterNot { it.id == id }; prefs.saveExpenses(expenses.value) }
 
     fun addHabit(name: String) {
         if (name.isBlank()) return

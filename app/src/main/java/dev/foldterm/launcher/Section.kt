@@ -30,6 +30,7 @@ enum class Section(val id: String, val title: String, val glyph: String) {
     USAGE("usage", "Screen time", "⏱"),
     FOCUS("focus", "Focus", "◎"),
     HABITS("habits", "Habits", "☑"),
+    MONEY("money", "Money", "$"),
     HEALTH("health", "Health", "♥"),
     WEATHER("weather", "Weather", "☁"),
     NEWS("news", "News", "≡"),
@@ -61,6 +62,7 @@ enum class Section(val id: String, val title: String, val glyph: String) {
                     "game", "arcade" -> GAMES
                     "fm", "stations" -> RADIO
                     "habit", "streaks" -> HABITS
+                    "budget", "expenses", "spending" -> MONEY
                     else -> null
                 }
         }

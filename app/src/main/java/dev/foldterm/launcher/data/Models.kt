@@ -153,6 +153,8 @@ data class Note(val id: Long, val text: String, val updated: Long) {
 /** A hosted widget: its id and the height the user chose, in dp. */
 data class WidgetSlot(val id: Int, val heightDp: Int)
 
+data class Expense(val id: Long, val amount: Double, val category: String, val note: String, val time: Long)
+
 data class TaskItem(
     val id: Long,
     val text: String,
