@@ -537,6 +537,11 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val hiddenKeys by vm.prefs.hidden.collectAsStateWithLifecycle()
     val sectionOrder by vm.prefs.sectionOrder.collectAsStateWithLifecycle()
     val coverMode by vm.prefs.coverMode.collectAsStateWithLifecycle()
+    val gUp by vm.prefs.gestureUp.collectAsStateWithLifecycle()
+    val gDown by vm.prefs.gestureDown.collectAsStateWithLifecycle()
+    val gDouble by vm.prefs.gestureDouble.collectAsStateWithLifecycle()
+    val ctlTick by vm.controlsTick.collectAsStateWithLifecycle()
+    val lockEnabled = remember(ctlTick) { dev.foldterm.launcher.data.LockAdmin.enabled(vm.getApplication()) }
     val homeLayout by vm.prefs.homeLayout.collectAsStateWithLifecycle()
     val coverCards by vm.prefs.coverCards.collectAsStateWithLifecycle()
     val hiddenSections by vm.prefs.hiddenSections.collectAsStateWithLifecycle()
@@ -685,6 +690,31 @@ fun SettingsScreen(vm: LauncherViewModel) {
                         }
                         Spacer(Modifier.height(4.dp))
                     }
+                    Divider()
+                    T("gestures", weight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    val actions = listOf("drawer", "shade", "prompt", "alerts", "media", "lock", "torch", "none")
+                    listOf(Triple("up", "swipe up", gUp), Triple("down", "swipe down", gDown), Triple("double", "double-tap", gDouble)).forEach { (which, label, cur) ->
+                        T(label, color = t.dim, size = 12.sp)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+                            actions.forEach { a ->
+                                Box(
+                                    Modifier.clip(RoundedCornerShape(50)).background(if (a == cur) t.button else t.chip)
+                                        .clickable {
+                                            vm.prefs.setGesture(which, a)
+                                            if (a == "lock" && !lockEnabled) vm.start(dev.foldterm.launcher.data.LockAdmin.enableIntent(vm.getApplication()))
+                                        }.padding(horizontal = 10.dp, vertical = 4.dp),
+                                ) { T(a, color = if (a == cur) t.onButton else t.dim, size = 12.sp) }
+                            }
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        T("screen lock", modifier = Modifier.width(110.dp))
+                        T(if (lockEnabled) "enabled" else "off", color = if (lockEnabled) t.ok else t.dim, modifier = Modifier.weight(1f))
+                        if (lockEnabled) TButton("turn off") { dev.foldterm.launcher.data.LockAdmin.disable(vm.getApplication()); vm.controlsTick.value++ }
+                        else TButton("enable") { vm.start(dev.foldterm.launcher.data.LockAdmin.enableIntent(vm.getApplication())) }
+                    }
+                    T("uses a device-admin permission limited to locking; turn it off here before uninstalling", color = t.dim, size = 11.sp)
                     Divider()
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         T("home layout", weight = FontWeight.Bold, modifier = Modifier.weight(1f))

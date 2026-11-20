@@ -574,6 +574,7 @@ class Shell(private val vm: LauncherViewModel) {
                 }
             }
         },
+        Cmd("lock", "lock", "lock the screen") { _, _ -> vm.lockScreen() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->

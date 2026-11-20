@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -175,12 +176,19 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
                         val threshold = 60.dp.toPx()
                         when {
                             vm.shellOpen.value -> Unit
-                            total < -threshold && !vm.drawerOpen.value -> vm.drawerOpen.value = true
+                            total < -threshold && vm.drawerOpen.value -> Unit
+                            total < -threshold -> vm.gesture(vm.prefs.gestureUp.value)
                             total > threshold && vm.drawerOpen.value -> vm.drawerOpen.value = false
-                            total > threshold -> vm.expandNotifications()
+                            total > threshold -> vm.gesture(vm.prefs.gestureDown.value)
                         }
                     },
                 ) { _, dy -> total += dy }
+            }
+            .pointerInput(Unit) {
+                // double-tap on empty space (children that handle taps consume them first)
+                detectTapGestures(onDoubleTap = {
+                    if (!vm.shellOpen.value && !vm.drawerOpen.value) vm.gesture(vm.prefs.gestureDouble.value)
+                })
             }
             .drawBehind {
                 // soft colour washes, echoing the gradient of the mock-ups

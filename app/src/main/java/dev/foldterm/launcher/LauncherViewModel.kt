@@ -8,6 +8,7 @@ import android.content.ClipboardManager
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import kotlin.math.roundToInt
+import dev.foldterm.launcher.data.LockAdmin
 import dev.foldterm.launcher.data.Note
 import dev.foldterm.launcher.data.WidgetSlot
 import dev.foldterm.launcher.data.Widgets
@@ -747,6 +748,27 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             out("torch ${if (next) "on" else "off"}", LineKind.OK)
         } catch (e: Exception) {
             out("torch: ${e.message}", LineKind.ERR)
+        }
+    }
+
+    fun lockScreen() {
+        if (!LockAdmin.lock(ctx)) {
+            out("screen lock isn't enabled — allow it in Settings → gestures", LineKind.ERR)
+            start(LockAdmin.enableIntent(ctx))
+        }
+    }
+
+    /** Runs a gesture's configured action. */
+    fun gesture(action: String) {
+        when (action) {
+            "drawer" -> drawerOpen.value = !drawerOpen.value
+            "shade" -> expandNotifications()
+            "prompt" -> shellOpen.value = true
+            "alerts" -> go(Section.NOTIFS)
+            "media" -> go(Section.MEDIA)
+            "lock" -> lockScreen()
+            "torch" -> setTorch(null)
+            "home" -> go(Section.HOME)
         }
     }
 

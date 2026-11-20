@@ -73,6 +73,15 @@ class Prefs(context: Context) {
         sp.edit().putString("focusDay", day).putLong("focusMs", focusToday() + ms).apply()
     }
 
+    // ── gestures: drawer, shade, prompt, alerts, media, lock, torch, none ──
+    val gestureUp = MutableStateFlow(sp.getString("gUp", "drawer") ?: "drawer")
+    val gestureDown = MutableStateFlow(sp.getString("gDown", "shade") ?: "shade")
+    val gestureDouble = MutableStateFlow(sp.getString("gDouble", "none") ?: "none")
+    fun setGesture(which: String, action: String) {
+        when (which) { "up" -> gestureUp.value = action; "down" -> gestureDown.value = action; else -> gestureDouble.value = action }
+        sp.edit().putString(when (which) { "up" -> "gUp"; "down" -> "gDown"; else -> "gDouble" }, action).apply()
+    }
+
     /** App drawer order: "az", "used" or "new". */
     val drawerSort = MutableStateFlow(sp.getString("drawerSort", "az") ?: "az")
     fun setDrawerSort(v: String) { drawerSort.value = v; sp.edit().putString("drawerSort", v).apply() }
