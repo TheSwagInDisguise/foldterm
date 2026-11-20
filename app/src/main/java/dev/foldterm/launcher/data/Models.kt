@@ -81,6 +81,8 @@ data class Notif(
     val contentIntent: PendingIntent?,
     val replyAction: Notification.Action?,
     val removed: Boolean = false,
+    /** The app's other notification buttons (archive, mark as read, …). */
+    val actions: List<Notification.Action> = emptyList(),
 )
 
 data class NowPlaying(

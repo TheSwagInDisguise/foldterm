@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.41.0" to listOf("notification buttons (archive, mark as read, …) work from Alerts, Mail and Chat"),
     "0.40.0" to listOf("Settings → motion: reduced turns off glows, pane animations and the visualiser", "Settings → status bar: hide it for an immersive home screen"),
     "0.39.0" to listOf("tasks with due dates appear in the agenda (overdue under today) and tick off there", "optional key clicks in the prompt (Settings)"),
     "0.38.0" to listOf("`!!` repeats the last command, `!n` runs history entry n", "`ans` reuses the last calculator result", "`ice` lists emergency contacts; `tip` for tips"),
@@ -791,6 +792,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             true
         } catch (e: Exception) {
             out("reply failed: ${e.message}", LineKind.ERR); false
+        }
+    }
+
+    /** Fires one of a notification's own buttons (archive, mark as read…). */
+    fun runNotifAction(n: Notif, a: android.app.Notification.Action) {
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                val opts = ActivityOptions.makeBasic()
+                    .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                a.actionIntent.send(ctx, 0, null, null, null, null, opts.toBundle())
+            } else a.actionIntent.send()
+            out("${a.title} · ${n.title.ifBlank { n.app }}", LineKind.OK)
+        } catch (e: Exception) {
+            out("${a.title} failed: ${e.message}", LineKind.ERR)
         }
     }
 

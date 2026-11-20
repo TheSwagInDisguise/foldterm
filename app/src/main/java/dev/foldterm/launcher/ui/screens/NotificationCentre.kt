@@ -165,6 +165,12 @@ private fun DetailAndRules(vm: LauncherViewModel, modifier: Modifier) {
                         if (!sel.removed) TButton("dismiss") { vm.dismissNotif(sel) }
                         TButton("copy") { vm.copy(sel.body.ifBlank { sel.text }) }
                     }
+                    if (!sel.removed && sel.actions.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            sel.actions.forEach { a -> TButton(a.title.toString().lowercase()) { vm.runNotifAction(sel, a) } }
+                        }
+                    }
                     if (!sel.removed) {
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

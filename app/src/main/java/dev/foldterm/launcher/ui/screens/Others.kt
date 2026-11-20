@@ -2,6 +2,7 @@ package dev.foldterm.launcher.ui.screens
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -167,10 +168,11 @@ fun MessagesScreen(vm: LauncherViewModel, kind: NotifKind) {
             Panel(m) {
                 if (sel == null) { Empty("nothing selected"); return@Panel }
                 var reply by remember(sel.key) { mutableStateOf("") }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TButton("open", primary = true) { vm.openNotif(sel) }
                     if (!sel.removed) TButton("dismiss") { vm.dismissNotif(sel) }
                     if (!sel.removed) TButton("snooze 1h") { vm.snoozeNotif(sel, 60) }
+                    if (!sel.removed) sel.actions.forEach { a -> TButton(a.title.toString().lowercase()) { vm.runNotifAction(sel, a) } }
                 }
                 Spacer(Modifier.height(16.dp))
                 T(sel.title.ifBlank { sel.app }, size = 22.sp, weight = FontWeight.Bold, maxLines = 3)

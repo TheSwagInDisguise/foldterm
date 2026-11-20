@@ -131,6 +131,7 @@ object NotificationStore {
             kind = kind,
             contentIntent = n.contentIntent,
             replyAction = reply,
+            actions = n.actions?.filter { a -> a !== reply && a.actionIntent != null && !a.title.isNullOrBlank() }.orEmpty().take(3),
         )
     }
 }
