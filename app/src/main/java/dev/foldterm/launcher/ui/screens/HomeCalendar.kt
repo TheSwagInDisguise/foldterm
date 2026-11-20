@@ -77,12 +77,14 @@ fun HomeScreen(vm: LauncherViewModel) {
                 right = { m -> SummaryPanel(vm, m) },
             )
         } else {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            // Narrow (cover screen): no outer scroll. Each panel scrolls itself, because nesting
+            // scrollable containers crashes Compose.
+            Column(Modifier.fillMaxSize()) {
                 HappeningNow(vm)
-                Spacer(Modifier.height(12.dp))
-                SummaryPanel(vm, Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                AgendaPanel(vm, Modifier.fillMaxWidth().height(520.dp))
+                Spacer(Modifier.height(10.dp))
+                SummaryPanel(vm, Modifier.fillMaxWidth().weight(0.45f))
+                Spacer(Modifier.height(10.dp))
+                AgendaPanel(vm, Modifier.fillMaxWidth().weight(0.55f))
             }
         }
     }

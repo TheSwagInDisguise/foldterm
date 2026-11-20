@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { vm.refreshPermissions() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        dev.foldterm.launcher.data.CrashLog.install(this)
         super.onCreate(savedInstanceState)
         // A translucent surface lets the wallpaper (theme: windowShowWallpaper) stay visible;
         // the UI paints its own opaque background when wallpaper mode is off.

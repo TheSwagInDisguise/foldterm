@@ -457,6 +457,18 @@ class Shell(private val vm: LauncherViewModel) {
             vm.openUrl("https://www.youtube.com/results?search_query=${android.net.Uri.encode(rest)}")
         },
         Cmd("copy", "copy <text>", "copy text to the clipboard", setOf("cp")) { _, rest -> vm.copy(rest) },
+        Cmd("crashlog", "crashlog [clear]", "show (and copy) the last crash") { args, _ ->
+            val trace = dev.foldterm.launcher.data.CrashLog.read(vm.getApplication())
+            when {
+                trace == null -> vm.out("no crash recorded", LineKind.OK)
+                args.firstOrNull() == "clear" -> { dev.foldterm.launcher.data.CrashLog.clear(vm.getApplication()); vm.out("cleared", LineKind.OK) }
+                else -> {
+                    trace.lines().take(40).forEach { vm.out(it, if (it.contains("Exception") || it.contains("Error")) LineKind.ERR else LineKind.DIM) }
+                    vm.copy(trace)
+                    vm.out("full trace copied — paste it to whoever's fixing this. `crashlog clear` to dismiss", LineKind.ACCENT)
+                }
+            }
+        },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->

@@ -145,6 +145,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         out("foldterm ${BuildConfig.VERSION_NAME} — type `help`", LineKind.DIM)
+        dev.foldterm.launcher.data.CrashLog.read(app)?.let { trace ->
+            val cause = trace.lines().drop(4).firstOrNull { it.isNotBlank() }?.trim() ?: "unknown"
+            out("last session crashed: $cause", LineKind.ERR)
+            out("run `crashlog` to see the details (and copy them)", LineKind.DIM)
+            shellOpen.value = true
+        }
     }
 
     override fun onCleared() {

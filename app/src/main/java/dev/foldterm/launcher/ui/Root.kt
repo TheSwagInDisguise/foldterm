@@ -605,16 +605,21 @@ private fun Dock(vm: LauncherViewModel, modifier: Modifier) {
     val shape = RoundedCornerShape(30.dp)
     BoxWithConstraints(modifier) {
         val compact = maxWidth < 560.dp
+        // Fit the dock to the width we have: smaller tiles and fewer apps on the cover screen.
+        val tile = if (maxWidth < 420.dp) 46.dp else 56.dp
+        val gap = if (maxWidth < 420.dp) 6.dp else 10.dp
+        val reserved = 20.dp + tile + gap + (if (compact) 0.dp else 230.dp + gap)
+        val fit = ((maxWidth - reserved) / (tile + gap)).toInt().coerceIn(0, 7)
         Row(
             Modifier.clip(shape).background(t.panel).border(1.dp, t.border, shape).padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(gap),
         ) {
             Box(
-                Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(t.button).clickable { vm.drawerOpen.value = !vm.drawerOpen.value },
+                Modifier.size(tile).clip(RoundedCornerShape(16.dp)).background(t.button).clickable { vm.drawerOpen.value = !vm.drawerOpen.value },
                 contentAlignment = Alignment.Center,
             ) { T("⠿", color = t.onButton, size = 26.sp, weight = FontWeight.Bold) }
-            dock.take(if (compact) 4 else 7).forEach { app -> DockIcon(vm, app) }
+            dock.take(fit).forEach { app -> DockIcon(vm, app, tile) }
             if (!compact) {
                 val cur = np
                 Row(
@@ -657,7 +662,7 @@ private fun Dock(vm: LauncherViewModel, modifier: Modifier) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DockIcon(vm: LauncherViewModel, app: AppEntry) {
+private fun DockIcon(vm: LauncherViewModel, app: AppEntry, tile: androidx.compose.ui.unit.Dp = 56.dp) {
     val t = LocalTerm.current
     val haptic = LocalHapticFeedback.current
     val iconStyle by vm.prefs.iconStyle.collectAsStateWithLifecycle()
@@ -666,11 +671,11 @@ private fun DockIcon(vm: LauncherViewModel, app: AppEntry) {
     val unread = remember(notifs, app.packageName) { notifs.count { !it.removed && it.pkg == app.packageName } }
     Box {
         Box(
-            Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(t.chip)
+            Modifier.size(tile).clip(RoundedCornerShape(16.dp)).background(t.chip)
                 .combinedClickable(onClick = { vm.launch(app) }, onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true }),
             contentAlignment = Alignment.Center,
         ) {
-            AppIcon(app, 42.dp, iconStyle) { vm.icon(app) }
+            AppIcon(app, tile * 0.75f, iconStyle) { vm.icon(app) }
             Badge(unread, Modifier.align(Alignment.TopEnd))
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
