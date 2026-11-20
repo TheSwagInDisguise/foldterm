@@ -391,6 +391,10 @@ class Prefs(context: Context) {
     val hideStatusBar = MutableStateFlow(sp.getBoolean("hideStatusBar", false))
     fun setHideStatusBar(v: Boolean) { hideStatusBar.value = v; sp.edit().putBoolean("hideStatusBar", v).apply() }
 
+    /** Note shown on Home's note card; 0 = the latest note. */
+    val pinnedNote = MutableStateFlow(sp.getLong("pinnedNote", 0L))
+    fun setPinnedNote(id: Long) { pinnedNote.value = id; sp.edit().putLong("pinnedNote", id).apply() }
+
     val keyClicks = MutableStateFlow(sp.getBoolean("keyClicks", false))
     fun setKeyClicks(v: Boolean) { keyClicks.value = v; sp.edit().putBoolean("keyClicks", v).apply() }
 

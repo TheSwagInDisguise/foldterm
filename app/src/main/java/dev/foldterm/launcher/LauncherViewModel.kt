@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.42.0" to listOf("pin a note to Home's note card; share notes to any app"),
     "0.41.0" to listOf("notification buttons (archive, mark as read, …) work from Alerts, Mail and Chat"),
     "0.40.0" to listOf("Settings → motion: reduced turns off glows, pane animations and the visualiser", "Settings → status bar: hide it for an immersive home screen"),
     "0.39.0" to listOf("tasks with due dates appear in the agenda (overdue under today) and tick off there", "optional key clicks in the prompt (Settings)"),

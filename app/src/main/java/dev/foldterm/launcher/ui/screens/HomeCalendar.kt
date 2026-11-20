@@ -155,8 +155,9 @@ private fun HomeWidgets(vm: LauncherViewModel, modifier: Modifier) {
 @Composable
 private fun LatestNote(vm: LauncherViewModel, modifier: Modifier) {
     val notes by vm.prefs.notes.collectAsStateWithLifecycle()
-    val n = notes.firstOrNull()
-    Panel(modifier, title = "note", trailing = { T("open ↗", color = LocalTerm.current.dim, size = 12.sp, modifier = Modifier.clickable { if (n != null) vm.openNote(n.id) else vm.go(Section.NOTES) }) }) {
+    val pinned by vm.prefs.pinnedNote.collectAsStateWithLifecycle()
+    val n = notes.firstOrNull { it.id == pinned } ?: notes.firstOrNull()
+    Panel(modifier, title = if (n != null && n.id == pinned) "📌 note" else "note", trailing = { T("open ↗", color = LocalTerm.current.dim, size = 12.sp, modifier = Modifier.clickable { if (n != null) vm.openNote(n.id) else vm.go(Section.NOTES) }) }) {
         if (n == null) { Empty("no notes yet", "+ new note") { vm.newNote(); vm.go(Section.NOTES) }; return@Panel }
         T(n.title, weight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))

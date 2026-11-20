@@ -106,6 +106,16 @@ fun NotesScreen(vm: LauncherViewModel) {
             var text by remember(selected.id) { mutableStateOf(selected.text) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 T("~/notes/${selected.id}.md", color = t.accent, size = 13.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                val pinned by vm.prefs.pinnedNote.collectAsStateWithLifecycle()
+                TButton(if (pinned == selected.id) "📌 pinned" else "pin") { vm.prefs.setPinnedNote(if (pinned == selected.id) 0L else selected.id) }
+                Spacer(Modifier.width(8.dp))
+                TButton("share") {
+                    vm.start(android.content.Intent.createChooser(
+                        android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text),
+                        "share note",
+                    ))
+                }
+                Spacer(Modifier.width(8.dp))
                 TButton("copy") { vm.copy(text) }
                 Spacer(Modifier.width(8.dp))
                 TButton("delete") { vm.deleteNote(selected.id) }
