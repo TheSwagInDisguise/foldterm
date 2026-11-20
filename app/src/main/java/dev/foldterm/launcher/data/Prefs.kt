@@ -366,6 +366,14 @@ class Prefs(context: Context) {
         setFolders(cur)
     }
 
+    /** Auto theme: when on, [dayTheme] between sunrise and sunset, [nightTheme] otherwise. */
+    val autoTheme = MutableStateFlow(sp.getBoolean("autoTheme", false))
+    val dayTheme = MutableStateFlow(sp.getString("dayTheme", "pastel") ?: "pastel")
+    val nightTheme = MutableStateFlow(sp.getString("nightTheme", "phosphor") ?: "phosphor")
+    fun setAutoTheme(v: Boolean) { autoTheme.value = v; sp.edit().putBoolean("autoTheme", v).apply() }
+    fun setDayTheme(v: String) { dayTheme.value = v; sp.edit().putString("dayTheme", v).apply() }
+    fun setNightTheme(v: String) { nightTheme.value = v; sp.edit().putString("nightTheme", v).apply() }
+
     /** Text size multiplier on top of the system font scale. */
     val textScale = MutableStateFlow(sp.getFloat("textScale", 1f))
     fun setTextScale(v: Float) { textScale.value = v; sp.edit().putFloat("textScale", v).apply() }

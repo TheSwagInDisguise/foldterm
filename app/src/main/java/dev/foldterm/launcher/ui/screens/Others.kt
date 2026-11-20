@@ -650,6 +650,9 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
     val engine by vm.prefs.searchEngine.collectAsStateWithLifecycle()
+    val autoTheme by vm.prefs.autoTheme.collectAsStateWithLifecycle()
+    val dayTheme by vm.prefs.dayTheme.collectAsStateWithLifecycle()
+    val nightTheme by vm.prefs.nightTheme.collectAsStateWithLifecycle()
     val textScale by vm.prefs.textScale.collectAsStateWithLifecycle()
     val morning by vm.prefs.morningBrief.collectAsStateWithLifecycle()
     val iconPack by vm.prefs.iconPack.collectAsStateWithLifecycle()
@@ -692,6 +695,27 @@ fun SettingsScreen(vm: LauncherViewModel) {
                                 T(th.name, color = th.fg, size = 13.sp)
                             }
                         }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("auto theme", modifier = Modifier.width(110.dp))
+                        Tabs(listOf("off", "day / night"), if (autoTheme) 1 else 0, { vm.prefs.setAutoTheme(it == 1) })
+                    }
+                    if (autoTheme) {
+                        listOf(Triple("day", dayTheme, { n: String -> vm.prefs.setDayTheme(n) }), Triple("night", nightTheme, { n: String -> vm.prefs.setNightTheme(n) })).forEach { (label, cur, set) ->
+                            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                T(label, color = t.dim, size = 12.sp, modifier = Modifier.width(56.dp))
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Themes.names.forEach { n ->
+                                        Box(
+                                            Modifier.clip(RoundedCornerShape(50)).background(if (n == cur) t.button else t.chip).clickable { set(n) }
+                                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                                        ) { T(n, color = if (n == cur) t.onButton else t.dim, size = 12.sp) }
+                                    }
+                                }
+                            }
+                        }
+                        T("switches at sunrise and sunset from the forecast (07:00/19:00 without weather)", color = t.dim, size = 11.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                     if (theme == "custom") {
                         Spacer(Modifier.height(10.dp))

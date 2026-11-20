@@ -133,7 +133,13 @@ fun LauncherRoot(vm: LauncherViewModel) {
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     val iconPack by vm.prefs.iconPack.collectAsStateWithLifecycle()
     val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
-    val colors = remember(themeName, customSpec) { if (themeName == "custom") Themes.custom(customSpec) else Themes.byName(themeName) }
+    val auto by vm.prefs.autoTheme.collectAsStateWithLifecycle()
+    val dayTheme by vm.prefs.dayTheme.collectAsStateWithLifecycle()
+    val nightTheme by vm.prefs.nightTheme.collectAsStateWithLifecycle()
+    val now by vm.now.collectAsStateWithLifecycle()
+    val weatherNow by vm.weather.collectAsStateWithLifecycle()
+    val effective = if (auto) (if (vm.isDaytime(now, weatherNow)) dayTheme else nightTheme) else themeName
+    val colors = remember(effective, customSpec) { if (effective == "custom") Themes.custom(customSpec) else Themes.byName(effective) }
     val textScale by vm.prefs.textScale.collectAsStateWithLifecycle()
     val baseDensity = LocalDensity.current
     TermTheme(colors) {

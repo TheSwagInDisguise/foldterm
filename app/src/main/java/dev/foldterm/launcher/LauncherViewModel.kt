@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.33.0" to listOf("auto theme: light by day, dark by night (Settings → theme)", "`neofetch` and `ip`"),
     "0.32.0" to listOf("Calendar quick-add field", "\"most used apps\" card for Home and the cover screen", "`wa <name>` and a WhatsApp button on contacts"),
     "0.31.0" to listOf("drawer folders: long-press an app → folders…; folder chips filter the drawer", "`folder <name>` opens the drawer at that folder"),
     "0.30.0" to listOf("text size: Settings → text size", "chain commands with ;  e.g. alias work=dnd on; split slack | chrome", "snooze notifications from Alerts, Mail and Chat"),
@@ -679,6 +680,45 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             openUrl("https://duckduckgo.com/?q=$e")
         }
     }
+
+    /** Daytime = between today's sunrise and sunset (from the forecast), else 07:00–19:00. */
+    fun isDaytime(nowMs: Long, w: Weather?): Boolean {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = nowMs }
+        val mins = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
+        fun parse(hm: String?): Int? = hm?.split(':')?.let { p -> p.getOrNull(0)?.toIntOrNull()?.let { h -> h * 60 + (p.getOrNull(1)?.toIntOrNull() ?: 0) } }
+        val rise = parse(w?.sunrise) ?: (7 * 60)
+        val set = parse(w?.sunset) ?: (19 * 60)
+        return mins in rise until set
+    }
+
+    /** neofetch-style device summary. */
+    fun neofetch() {
+        val v = deviceRepo.vitals()
+        val dm = ctx.resources.displayMetrics
+        val art = listOf(
+            "   ▄▄▄▄▄▄▄▄   ", "  █ ❯ _    █  ", "  █        █  ", "  █▄▄▄▄▄▄▄▄█  ", "   ▀▀▀▀▀▀▀▀   ", "              ", "              ", "              ", "              ",
+        )
+        val info = listOf(
+            "${prefs.userName.value.ifBlank { "user" }}@${Build.MODEL.lowercase().replace(' ', '-')}",
+            "os       Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
+            "host     ${Build.MANUFACTURER} ${Build.MODEL}",
+            "shell    foldterm ${BuildConfig.VERSION_NAME}",
+            "uptime   ${Fmt.duration(v.uptimeMs)}",
+            "display  ${dm.widthPixels}×${dm.heightPixels} · ${fold.value.label}",
+            "theme    ${prefs.theme.value}${if (prefs.autoTheme.value) " (auto)" else ""} · icons ${prefs.iconStyle.value}",
+            "apps     ${allApps.value.size} (${prefs.hidden.value.size} hidden)",
+            "battery  ${v.battery}%${if (v.charging) " ⚡" else ""} · memory ${Fmt.gb(v.ramTotalGb - v.ramAvailGb)}/${Fmt.gb(v.ramTotalGb)}",
+        )
+        art.zip(info).forEachIndexed { i, (a, b) -> out("$a $b", if (i == 0) LineKind.ACCENT else LineKind.OUT) }
+        out("               " + listOf("█", "█", "█", "█", "█", "█").joinToString(""), LineKind.OK)
+    }
+
+    /** Local IP addresses (Wi-Fi / mobile / VPN). */
+    fun ipAddresses(): List<String> = runCatching {
+        java.net.NetworkInterface.getNetworkInterfaces().toList().filter { it.isUp && !it.isLoopback }.flatMap { ni ->
+            ni.inetAddresses.toList().filter { !it.isLoopbackAddress && it is java.net.Inet4Address }.map { "${ni.name.padEnd(8)} ${it.hostAddress}" }
+        }
+    }.getOrDefault(emptyList())
 
     /** A terminal-style rundown of the day. */
     fun brief() {
