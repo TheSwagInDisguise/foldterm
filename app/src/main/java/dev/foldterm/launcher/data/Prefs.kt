@@ -327,6 +327,24 @@ class Prefs(context: Context) {
     )
     fun setPlaces(v: List<String>) { places.value = v; sp.edit().putString("places", JSONArray(v).toString()).apply() }
 
+    // ── news read state / saved stories ──
+    fun loadNewsRead(): Set<String> = runCatching {
+        val a = JSONArray(sp.getString("newsRead", "[]")); (0 until a.length()).map { a.getString(it) }.toSet()
+    }.getOrDefault(emptySet())
+    fun saveNewsRead(v: Set<String>) { sp.edit().putString("newsRead", JSONArray(v.toList()).toString()).apply() }
+    fun loadNewsSaved(): List<NewsItem> = runCatching {
+        val a = JSONArray(sp.getString("newsSaved", "[]"))
+        (0 until a.length()).map { i ->
+            val o = a.getJSONObject(i)
+            NewsItem(o.getString("title"), o.getString("link"), o.optString("source"), o.optLong("published", 0L).takeIf { it > 0 })
+        }
+    }.getOrDefault(emptyList())
+    fun saveNewsSaved(v: List<NewsItem>) {
+        val a = JSONArray()
+        v.take(100).forEach { a.put(JSONObject().put("title", it.title).put("link", it.link).put("source", it.source).put("published", it.published ?: 0L)) }
+        sp.edit().putString("newsSaved", a.toString()).apply()
+    }
+
     /** True exactly once, on the very first launch. */
     fun consumeFirstRun(): Boolean {
         if (sp.getBoolean("seenFirstRun", false)) return false

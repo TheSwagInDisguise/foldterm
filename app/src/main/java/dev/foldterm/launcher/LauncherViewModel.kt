@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.27.0" to listOf("People → groups tab shows your contact labels", "News remembers what you've read; ☆ saves stories for later"),
     "0.26.0" to listOf("tasks take a due day and priority: `todo add pay rent fri !`", "overdue tasks turn red and sort first; tap ☆ to star"),
     "0.25.1" to listOf("app shortcuts: long-press an app for its shortcuts; the prompt finds them too (needs FoldTerm as home app)"),
     "0.24.0" to listOf("saved weather places: + add place in the Weather pane", "`weather tokyo` prints anywhere's forecast"),
@@ -313,6 +314,31 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         contacts.value = withContext(Dispatchers.IO) { contactsRepo.load() }
         val sel = selectedContact.value
         if (sel != null) contacts.value.firstOrNull { it.id == sel.summary.id }?.let { selectContact(it) }
+    }
+
+    val contactGroups = MutableStateFlow<Map<String, Set<Long>>>(emptyMap())
+
+    fun loadGroups() {
+        viewModelScope.launch { contactGroups.value = withContext(Dispatchers.IO) { contactsRepo.groups() } }
+    }
+
+    // news read state & saved stories
+    val newsRead = MutableStateFlow(prefs.loadNewsRead())
+    val newsSaved = MutableStateFlow(prefs.loadNewsSaved())
+
+    fun openStory(n: NewsItem) {
+        if (n.link.isNotBlank()) openUrl(n.link)
+        if (n.link !in newsRead.value) { newsRead.value = (newsRead.value + n.link).toList().takeLast(400).toSet(); prefs.saveNewsRead(newsRead.value) }
+    }
+
+    fun toggleSaved(n: NewsItem) {
+        newsSaved.value = if (newsSaved.value.any { it.link == n.link }) newsSaved.value.filterNot { it.link == n.link } else listOf(n) + newsSaved.value
+        prefs.saveNewsSaved(newsSaved.value)
+    }
+
+    fun markAllRead(list: List<NewsItem>) {
+        newsRead.value = (newsRead.value + list.map { it.link }).toList().takeLast(400).toSet()
+        prefs.saveNewsRead(newsRead.value)
     }
 
     fun selectContact(c: ContactSummary) {

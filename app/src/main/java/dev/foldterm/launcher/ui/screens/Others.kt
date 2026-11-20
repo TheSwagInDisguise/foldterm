@@ -223,6 +223,7 @@ fun PeopleScreen(vm: LauncherViewModel) {
     val perms by vm.perms.collectAsStateWithLifecycle()
     var filter by remember { mutableStateOf("") }
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val groups by vm.contactGroups.collectAsStateWithLifecycle()
 
     LaunchedEffect(contacts) {
         if (vm.selectedContact.value == null) contacts.firstOrNull { it.id in ice }?.let { vm.selectContact(it) }
@@ -238,7 +239,7 @@ fun PeopleScreen(vm: LauncherViewModel) {
         leftFraction = 0.48f,
         left = { m ->
             Panel(m) {
-                Tabs(listOf("people", "favorites", "companies"), tab, { tab = it })
+                Tabs(listOf("people", "favorites", "companies", "groups"), tab, { tab = it; if (it == 3) vm.loadGroups() })
                 Spacer(Modifier.height(10.dp))
                 Field(filter, { filter = it }, "grep contacts…", Modifier.fillMaxWidth())
                 Spacer(Modifier.height(6.dp))
@@ -268,9 +269,19 @@ fun PeopleScreen(vm: LauncherViewModel) {
                             }
                         }
                         1 -> shown.filter { it.starred }.forEach { c -> item(key = "f${c.id}") { ContactRow(vm, c, detail?.summary?.id == c.id) } }
-                        else -> shown.filter { it.company != null }.groupBy { it.company!! }.toSortedMap(String.CASE_INSENSITIVE_ORDER).forEach { (co, group) ->
+                        2 -> shown.filter { it.company != null }.groupBy { it.company!! }.toSortedMap(String.CASE_INSENSITIVE_ORDER).forEach { (co, group) ->
                             header(co, t.accent2)
                             group.forEach { c -> item(key = "co${c.id}") { ContactRow(vm, c, detail?.summary?.id == c.id) } }
+                        }
+                        else -> {
+                            if (groups.isEmpty()) item(key = "nogroups") { Empty("no contact groups — create labels in your contacts app") }
+                            groups.forEach { (title, ids) ->
+                                val members = shown.filter { it.id in ids }
+                                if (members.isNotEmpty()) {
+                                    header("$title (${members.size})", t.accent2)
+                                    members.forEach { c -> item(key = "gr${title}_${c.id}") { ContactRow(vm, c, detail?.summary?.id == c.id) } }
+                                }
+                            }
                         }
                     }
                 }
@@ -563,29 +574,52 @@ fun NewsScreen(vm: LauncherViewModel) {
     val news by vm.news.collectAsStateWithLifecycle()
     val status by vm.newsStatus.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
+    val read by vm.newsRead.collectAsStateWithLifecycle()
+    val saved by vm.newsSaved.collectAsStateWithLifecycle()
     var source by rememberSaveable { mutableStateOf<String?>(null) }
+    var savedTab by rememberSaveable { mutableStateOf(false) }
+    var hideRead by rememberSaveable { mutableStateOf(false) }
     val sources = remember(news) { news.map { it.source }.distinct() }
-    val shown = news.filter { source == null || it.source == source }
-    Panel(Modifier.fillMaxSize(), title = "news", trailing = { T(status, color = t.dim, size = 12.sp) }) {
-        if (sources.size > 1) {
+    val shown = if (savedTab) saved else news.filter { (source == null || it.source == source) && (!hideRead || it.link !in read) }
+    val unread = news.count { it.link !in read }
+    Panel(Modifier.fillMaxSize(), title = "news · $unread unread", trailing = { T(status, color = t.dim, size = 12.sp) }) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Tabs(listOf("stories", "saved (${saved.size})"), if (savedTab) 1 else 0, { savedTab = it == 1 })
+            Spacer(Modifier.weight(1f))
+            if (!savedTab) {
+                T(if (hideRead) "show read" else "hide read", color = t.dim, size = 12.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { hideRead = !hideRead }.padding(6.dp))
+                T("mark all read", color = t.dim, size = 12.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { vm.markAllRead(news) }.padding(6.dp))
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        if (!savedTab && sources.size > 1) {
             Tabs(listOf("all") + sources.map { it.take(18) }, if (source == null) 0 else sources.indexOf(source) + 1, { i ->
                 source = if (i == 0) null else sources[i - 1]
             })
             Spacer(Modifier.height(10.dp))
         }
-        if (shown.isEmpty()) { Empty(status.ifBlank { "no headlines" }, "refresh") { vm.reloadNews() }; return@Panel }
+        if (shown.isEmpty()) {
+            if (savedTab) Empty("nothing saved — tap ☆ on a story") else Empty(status.ifBlank { "no headlines" }, "refresh") { vm.reloadNews() }
+            return@Panel
+        }
         LazyColumn(Modifier.fillMaxSize()) {
             items(shown.size, key = { shown[it].link + it }) { i ->
                 val n = shown[i]
+                val isRead = n.link in read
+                val isSaved = saved.any { it.link == n.link }
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { if (n.link.isNotBlank()) vm.openUrl(n.link) }
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { vm.openStory(n) }
                         .padding(horizontal = 8.dp, vertical = 10.dp),
                 ) {
-                    T((i + 1).toString().padStart(2, '0'), color = t.dim, modifier = Modifier.width(36.dp))
+                    T(if (isRead) "  " else "● ", color = t.accent2, size = 12.sp, modifier = Modifier.padding(top = 3.dp))
                     Column(Modifier.weight(1f)) {
-                        T(n.title, size = 16.sp, weight = FontWeight.SemiBold, maxLines = 3)
+                        T(n.title, size = 16.sp, weight = if (isRead) FontWeight.Normal else FontWeight.SemiBold, maxLines = 3, color = if (isRead) t.dim else t.fg)
                         T("${n.source}${n.published?.let { " · ${Fmt.ago(it, now)}" } ?: ""}", color = t.accent3, size = 12.sp)
                     }
+                    T(if (isSaved) "★" else "☆", color = if (isSaved) t.warn else t.dim, size = 18.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { vm.toggleSaved(n) }.padding(8.dp))
                 }
             }
         }

@@ -79,6 +79,35 @@ class ContactsRepository(private val ctx: Context) {
         return out
     }
 
+    /** Contact groups (merged by name across accounts) → member contact ids. */
+    fun groups(): Map<String, Set<Long>> {
+        if (!granted()) return emptyMap()
+        val cr = ctx.contentResolver
+        val titles = HashMap<Long, String>()
+        runCatching {
+            cr.query(
+                android.provider.ContactsContract.Groups.CONTENT_URI,
+                arrayOf(android.provider.ContactsContract.Groups._ID, android.provider.ContactsContract.Groups.TITLE),
+                "${android.provider.ContactsContract.Groups.DELETED}=0", null, null,
+            )?.use { c -> while (c.moveToNext()) c.getString(1)?.takeIf { it.isNotBlank() }?.let { titles[c.getLong(0)] = it } }
+        }
+        val members = HashMap<String, MutableSet<Long>>()
+        runCatching {
+            cr.query(
+                Data.CONTENT_URI,
+                arrayOf(Data.CONTACT_ID, android.provider.ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID),
+                "${Data.MIMETYPE}=?", arrayOf(android.provider.ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE), null,
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val title = titles[c.getLong(1)] ?: continue
+                    if (title == "My Contacts" || title == "Starred in Android" || title.startsWith("System Group")) continue
+                    members.getOrPut(title) { mutableSetOf() } += c.getLong(0)
+                }
+            }
+        }
+        return members.toSortedMap(String.CASE_INSENSITIVE_ORDER)
+    }
+
     fun detail(s: ContactSummary): ContactDetail {
         val phones = mutableListOf<String>()
         val emails = mutableListOf<String>()
