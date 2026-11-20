@@ -105,6 +105,16 @@ class MainActivity : ComponentActivity() {
 
         setContent { LauncherRoot(vm) }
 
+        // optional immersive home: hide the status bar (swipe down from the edge still shows it)
+        lifecycleScope.launch {
+            vm.prefs.hideStatusBar.collect { hide ->
+                val c = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                c.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                if (hide) c.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                else c.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+            }
+        }
+
         if (vm.prefs.consumeFirstRun()) {
             vm.out("first run: requesting permissions — `grant` to retry, `access` for notifications", dev.foldterm.launcher.shell.LineKind.DIM)
             vm.requestAllPermissions()

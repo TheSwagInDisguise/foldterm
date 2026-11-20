@@ -141,11 +141,13 @@ fun LauncherRoot(vm: LauncherViewModel) {
     val effective = if (auto) (if (vm.isDaytime(now, weatherNow)) dayTheme else nightTheme) else themeName
     val colors = remember(effective, customSpec) { if (effective == "custom") Themes.custom(customSpec) else Themes.byName(effective) }
     val textScale by vm.prefs.textScale.collectAsStateWithLifecycle()
+    val reduceMotion by vm.prefs.reduceMotion.collectAsStateWithLifecycle()
     val baseDensity = LocalDensity.current
     TermTheme(colors) {
         CompositionLocalProvider(
             LocalFold provides fold, LocalIconTint provides parseHexColor(iconTint), LocalIconPack provides iconPack,
             LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density, baseDensity.fontScale * textScale),
+            LocalReduceMotion provides reduceMotion,
         ) {
             LauncherScaffold(vm)
         }
@@ -173,6 +175,7 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
     }
 
     val wallpaper by vm.prefs.showWallpaper.collectAsStateWithLifecycle()
+    val reduceMotionNow = LocalReduceMotion.current
     val dim by vm.prefs.wallpaperDim.collectAsStateWithLifecycle()
     Box(
         Modifier
@@ -203,7 +206,8 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
                 })
             }
             .drawBehind {
-                // soft colour washes, echoing the gradient of the mock-ups
+                // soft colour washes, echoing the gradient of the mock-ups (off with reduce motion)
+                if (reduceMotionNow) return@drawBehind
                 drawRect(Brush.radialGradient(listOf(t.glowA, Color.Transparent), Offset(0f, 0f), size.maxDimension * 0.7f))
                 drawRect(Brush.radialGradient(listOf(t.glowB, Color.Transparent), Offset(size.width, 0f), size.maxDimension * 0.6f))
                 drawRect(Brush.radialGradient(listOf(t.glowC, Color.Transparent), Offset(size.width * 0.8f, size.height), size.maxDimension * 0.7f))
@@ -375,11 +379,13 @@ private fun Badge(count: Int, modifier: Modifier) {
 
 @Composable
 private fun SectionContent(vm: LauncherViewModel, section: Section, modifier: Modifier) {
+    val calm = LocalReduceMotion.current
     AnimatedContent(
         targetState = section,
         modifier = modifier,
         transitionSpec = {
-            (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 40 }) togetherWith fadeOut(tween(90))
+            if (calm) fadeIn(tween(0)) togetherWith fadeOut(tween(0))
+            else (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 40 }) togetherWith fadeOut(tween(90))
         },
         label = "section",
     ) { s ->

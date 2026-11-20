@@ -125,7 +125,7 @@ private fun PlayerPanel(vm: LauncherViewModel, modifier: Modifier) {
                 Control("⏭", 22) { NowPlayingStore.next() }
             }
             Spacer(Modifier.height(14.dp))
-            Visualizer(cur.isPlaying, clock)
+            Visualizer(cur.isPlaying && !dev.foldterm.launcher.ui.LocalReduceMotion.current, clock)
             Spacer(Modifier.height(10.dp))
             TButton("open ${vm.appLabelForPackage(cur.pkg)}") { vm.openPackage(cur.pkg) }
         }

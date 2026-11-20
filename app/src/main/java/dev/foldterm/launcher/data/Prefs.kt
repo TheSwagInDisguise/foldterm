@@ -386,6 +386,11 @@ class Prefs(context: Context) {
         summaryHidden.value = next; sp.edit().putStringSet("summaryHidden", next).apply()
     }
 
+    val reduceMotion = MutableStateFlow(sp.getBoolean("reduceMotion", false))
+    fun setReduceMotion(v: Boolean) { reduceMotion.value = v; sp.edit().putBoolean("reduceMotion", v).apply() }
+    val hideStatusBar = MutableStateFlow(sp.getBoolean("hideStatusBar", false))
+    fun setHideStatusBar(v: Boolean) { hideStatusBar.value = v; sp.edit().putBoolean("hideStatusBar", v).apply() }
+
     val keyClicks = MutableStateFlow(sp.getBoolean("keyClicks", false))
     fun setKeyClicks(v: Boolean) { keyClicks.value = v; sp.edit().putBoolean("keyClicks", v).apply() }
 

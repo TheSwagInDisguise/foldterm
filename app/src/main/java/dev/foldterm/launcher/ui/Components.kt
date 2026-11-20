@@ -61,6 +61,9 @@ import kotlin.math.abs
 
 val LocalFold = staticCompositionLocalOf { FoldState() }
 
+/** True when the user asked for fewer animations and effects. */
+val LocalReduceMotion = staticCompositionLocalOf { false }
+
 /** Current icon pack package, so icons reload when it changes. */
 val LocalIconPack = staticCompositionLocalOf { "" }
 

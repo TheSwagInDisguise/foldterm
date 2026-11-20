@@ -650,6 +650,8 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
     val engine by vm.prefs.searchEngine.collectAsStateWithLifecycle()
+    val reduceMotionPref by vm.prefs.reduceMotion.collectAsStateWithLifecycle()
+    val hideBar by vm.prefs.hideStatusBar.collectAsStateWithLifecycle()
     val keyClicks by vm.prefs.keyClicks.collectAsStateWithLifecycle()
     val summaryHidden by vm.prefs.summaryHidden.collectAsStateWithLifecycle()
     val autoTheme by vm.prefs.autoTheme.collectAsStateWithLifecycle()
@@ -761,6 +763,16 @@ fun SettingsScreen(vm: LauncherViewModel) {
                         Field(specDraft, { specDraft = it }, Themes.DEFAULT_CUSTOM, Modifier.fillMaxWidth(), onDone = { vm.prefs.setCustomTheme(specDraft.trim()) })
                     }
                     Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("motion", modifier = Modifier.width(110.dp))
+                        Tabs(listOf("full", "reduced"), if (reduceMotionPref) 1 else 0, { vm.prefs.setReduceMotion(it == 1) })
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("status bar", modifier = Modifier.width(110.dp))
+                        Tabs(listOf("show", "hide"), if (hideBar) 1 else 0, { vm.prefs.setHideStatusBar(it == 1) })
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         T("text size", modifier = Modifier.width(110.dp))
                         val scales = listOf(0.9f, 1f, 1.15f, 1.3f)

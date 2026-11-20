@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.40.0" to listOf("Settings → motion: reduced turns off glows, pane animations and the visualiser", "Settings → status bar: hide it for an immersive home screen"),
     "0.39.0" to listOf("tasks with due dates appear in the agenda (overdue under today) and tick off there", "optional key clicks in the prompt (Settings)"),
     "0.38.0" to listOf("`!!` repeats the last command, `!n` runs history entry n", "`ans` reuses the last calculator result", "`ice` lists emergency contacts; `tip` for tips"),
     "0.37.0" to listOf("Calendar → calendars: hide calendars you don't want to see", "Settings → home layout → summary rows: choose what the summary shows"),
