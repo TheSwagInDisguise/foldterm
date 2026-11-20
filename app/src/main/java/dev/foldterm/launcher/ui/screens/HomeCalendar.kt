@@ -297,6 +297,7 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
     val access by vm.notifAccess.collectAsStateWithLifecycle()
     val tasks by vm.tasks.collectAsStateWithLifecycle()
     val vitals by vm.vitals.collectAsStateWithLifecycle()
+    val usage by vm.usage.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
 
     Panel(
@@ -346,6 +347,13 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
             val open = tasks.filter { !it.done }
             SummaryRow("✓", "Tasks", t.ok, onClick = { vm.go(Section.CALENDAR) }) {
                 if (open.isEmpty()) "Nothing on the list." else "${open.size} to do. Next: ${open.first().text}."
+            }
+            usage?.let { u ->
+                Divider()
+                SummaryRow("⏱", "Screen time", t.accent2, onClick = { vm.go(Section.USAGE) }) {
+                    val top = u.apps.firstOrNull()
+                    "${Fmt.duration(u.totalMs).ifBlank { "Under a minute" }} so far, ${u.unlocks} unlocks.${top?.let { " Most used: ${vm.appLabelForPackage(it.pkg)} (${Fmt.duration(it.ms)})." } ?: ""}"
+                }
             }
             vitals?.let { v ->
                 Divider()

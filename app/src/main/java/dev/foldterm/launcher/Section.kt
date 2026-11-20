@@ -26,6 +26,7 @@ enum class Section(val id: String, val title: String, val glyph: String) {
     PHOTOS("photos", "Photos", "▣"),
     MEDIA("media", "Media", "♫"),
     CONTROLS("controls", "Controls", "◐"),
+    USAGE("usage", "Screen time", "⏱"),
     HEALTH("health", "Health", "♥"),
     WEATHER("weather", "Weather", "☁"),
     NEWS("news", "News", "≡"),
@@ -51,6 +52,7 @@ enum class Section(val id: String, val title: String, val glyph: String) {
                     "music", "player", "nowplaying" -> MEDIA
                     "notifications", "alerts", "notification" -> NOTIFS
                     "quick", "qs", "control" -> CONTROLS
+                    "screentime", "screen", "time" -> USAGE
                     else -> null
                 }
         }

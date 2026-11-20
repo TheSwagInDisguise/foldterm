@@ -555,6 +555,11 @@ class Shell(private val vm: LauncherViewModel) {
             vm.control { vm.controls.setAutoRotate(on) }
             vm.out("auto-rotate ${if (on) "on" else "off"}", LineKind.OK)
         },
+        Cmd("usage", "usage", "today's screen time", setOf("screentime")) { _, _ ->
+            val r = vm.screenTime.report() ?: run { vm.out("usage access needed — opening settings", LineKind.ERR); vm.start(vm.screenTime.settingsIntent()); return@Cmd }
+            vm.out("today ${Fmt.duration(r.totalMs)} · ${r.unlocks} unlocks", LineKind.ACCENT)
+            r.apps.take(8).forEach { vm.out("  ${Fmt.duration(it.ms).padStart(6)}  ${vm.appLabelForPackage(it.pkg)}") }
+        },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },
         Cmd("date", "date", "date and time") { _, _ ->

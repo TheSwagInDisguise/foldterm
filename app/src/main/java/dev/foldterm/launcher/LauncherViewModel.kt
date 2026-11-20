@@ -165,6 +165,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun refresh(force: Boolean = false) {
         controlsTick.value++
         if (refreshJob?.isActive == true && !force) return
+        loadUsage()
         refreshJob = viewModelScope.launch {
             Fmt.is24 = DateFormat.is24HourFormat(ctx)
             refreshPermissions()
@@ -415,6 +416,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     val iconPacks = dev.foldterm.launcher.data.IconPacks(app)
     val controls = dev.foldterm.launcher.data.Controls(app)
+    val screenTime = dev.foldterm.launcher.data.ScreenTime(app)
+    val usage = MutableStateFlow<dev.foldterm.launcher.data.UsageReport?>(null)
+
+    fun loadUsage() {
+        viewModelScope.launch { usage.value = withContext(Dispatchers.Default) { runCatching { screenTime.report() }.getOrNull() } }
+    }
     /** Bumped after a control changes so the Controls pane re-reads system state. */
     val controlsTick = MutableStateFlow(0)
 
