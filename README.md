@@ -57,7 +57,7 @@ Agenda, inbox, people, weather and news in hinge-aware panes, with a command lin
 | **♥ Health** | Step counter with a goal and 7-day history, plus an `htop`-style view of battery, storage, memory, uptime and hinge posture |
 | **☁ Weather** | Current conditions, 12-hour rain chart, 7-day range bars, wind, UV, sunrise/sunset, severe-weather warnings, and **saved places** |
 | **≡ News** | RSS/Atom headlines by source, unread dots, hide read, mark all read, and a **saved** list |
-| **✎ Notes** | Autosaving scratchpad with search, copy, and a preview that renders headings, bullets and tappable `- [ ]` checklists |
+| **✎ Notes** | Autosaving scratchpad with search, copy, share, a note pinned to Home, and a preview that renders headings, bullets and tappable `- [ ]` checklists |
 | **◫ Widgets** | Host real Android widgets in one or two columns with reorder and resize; they can also go on Home and the cover screen |
 | **⚙ Settings** | Themes, icons, text size, wallpaper, sidebar, home and cover layouts, gestures, permissions, search engine, morning brief, backup & restore |
 
