@@ -17,7 +17,39 @@ enum class LineKind { CMD, OUT, DIM, OK, ERR, ACCENT }
 
 data class Line(val text: String, val kind: LineKind)
 
-enum class SuggestionKind { COMMAND, APP, CONTACT, SECTION, WEB, EVENT, NOTE, MESSAGE, ALIAS, PAIR, SHORTCUT }
+enum class SuggestionKind { COMMAND, APP, CONTACT, SECTION, WEB, EVENT, NOTE, MESSAGE, ALIAS, PAIR, SHORTCUT, SETTING }
+
+/** Settings you can jump to by name: (keywords, label, android settings action or null for FoldTerm settings). */
+private val SETTINGS_INDEX: List<Triple<List<String>, String, String?>> = listOf(
+    Triple(listOf("theme", "dark", "light", "colour", "color", "custom theme"), "FoldTerm › theme", null),
+    Triple(listOf("wallpaper", "background"), "FoldTerm › background / wallpaper", null),
+    Triple(listOf("icon", "icon pack", "mono icons", "tint"), "FoldTerm › icons", null),
+    Triple(listOf("sidebar", "sections", "rail"), "FoldTerm › sidebar", null),
+    Triple(listOf("home layout", "cards", "home cards"), "FoldTerm › home layout", null),
+    Triple(listOf("cover", "cover screen", "folded"), "FoldTerm › cover screen", null),
+    Triple(listOf("gesture", "double tap", "swipe", "lock screen"), "FoldTerm › gestures", null),
+    Triple(listOf("text size", "font", "bigger text"), "FoldTerm › text size", null),
+    Triple(listOf("backup", "restore", "export"), "FoldTerm › backup", null),
+    Triple(listOf("search engine", "duckduckgo", "google"), "FoldTerm › web search", null),
+    Triple(listOf("permissions", "notification access"), "FoldTerm › permissions", null),
+    Triple(listOf("wifi", "wi-fi", "network"), "Android › Wi-Fi", android.provider.Settings.ACTION_WIFI_SETTINGS),
+    Triple(listOf("bluetooth", "pair device"), "Android › Bluetooth", android.provider.Settings.ACTION_BLUETOOTH_SETTINGS),
+    Triple(listOf("battery", "battery usage"), "Android › battery", Intent.ACTION_POWER_USAGE_SUMMARY),
+    Triple(listOf("display", "brightness", "screen timeout"), "Android › display", android.provider.Settings.ACTION_DISPLAY_SETTINGS),
+    Triple(listOf("sound", "ringtone", "vibration"), "Android › sound", android.provider.Settings.ACTION_SOUND_SETTINGS),
+    Triple(listOf("storage", "space"), "Android › storage", android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS),
+    Triple(listOf("developer", "developer options", "usb debugging"), "Android › developer options", android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
+    Triple(listOf("accessibility"), "Android › accessibility", android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS),
+    Triple(listOf("date", "time zone"), "Android › date & time", android.provider.Settings.ACTION_DATE_SETTINGS),
+    Triple(listOf("language", "keyboard"), "Android › language & input", android.provider.Settings.ACTION_LOCALE_SETTINGS),
+    Triple(listOf("location", "gps"), "Android › location", android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS),
+    Triple(listOf("apps", "default apps", "app list"), "Android › apps", android.provider.Settings.ACTION_APPLICATION_SETTINGS),
+    Triple(listOf("security", "fingerprint", "pin"), "Android › security", android.provider.Settings.ACTION_SECURITY_SETTINGS),
+    Triple(listOf("nfc", "tap to pay"), "Android › NFC", android.provider.Settings.ACTION_NFC_SETTINGS),
+    Triple(listOf("airplane", "flight mode"), "Android › airplane mode", android.provider.Settings.ACTION_AIRPLANE_MODE_SETTINGS),
+    Triple(listOf("vpn"), "Android › VPN", android.provider.Settings.ACTION_VPN_SETTINGS),
+    Triple(listOf("about phone", "android version", "build number"), "Android › about phone", android.provider.Settings.ACTION_DEVICE_INFO_SETTINGS),
+)
 
 data class Suggestion(
     val kind: SuggestionKind,
@@ -185,6 +217,14 @@ class Shell(private val vm: LauncherViewModel) {
                 out += Suggestion(SuggestionKind.SHORTCUT, label, app.label, app) { vm.startShortcut(sc) }
             }
         }
+        if (q.length >= 3) {
+            SETTINGS_INDEX.filter { (keys, label, _) -> keys.any { k -> score(k, q) >= 70 } || score(label, q) >= 70 }.take(2).forEach { (_, label, action) ->
+                out += Suggestion(SuggestionKind.SETTING, label, if (action == null) "FoldTerm settings" else "system settings") {
+                    if (action == null) vm.go(Section.SETTINGS) else vm.start(Intent(action))
+                    vm.shellOpen.value = false; vm.input.value = ""
+                }
+            }
+        }
         rankContacts(q).take(3).forEach { c ->
             out += Suggestion(SuggestionKind.CONTACT, c.name, c.phone ?: c.email ?: c.company ?: "contact") {
                 vm.go(Section.PEOPLE); vm.selectContact(c); vm.shellOpen.value = false; vm.input.value = ""
@@ -227,6 +267,7 @@ class Shell(private val vm: LauncherViewModel) {
                 SuggestionKind.ALIAS, SuggestionKind.PAIR -> 0
                 SuggestionKind.CONTACT -> 3
                 SuggestionKind.SHORTCUT -> 2
+                SuggestionKind.SETTING -> 3
                 SuggestionKind.EVENT, SuggestionKind.NOTE, SuggestionKind.MESSAGE -> 4
                 SuggestionKind.WEB -> if (it.label.startsWith("open ")) 1 else 9
             }

@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.34.0" to listOf("type a setting's name (wallpaper, icon pack, bluetooth, developer options…) to jump to it"),
     "0.33.0" to listOf("auto theme: light by day, dark by night (Settings → theme)", "`neofetch` and `ip`"),
     "0.32.0" to listOf("Calendar quick-add field", "\"most used apps\" card for Home and the cover screen", "`wa <name>` and a WhatsApp button on contacts"),
     "0.31.0" to listOf("drawer folders: long-press an app → folders…; folder chips filter the drawer", "`folder <name>` opens the drawer at that folder"),

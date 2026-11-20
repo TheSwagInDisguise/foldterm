@@ -235,7 +235,7 @@ private fun LauncherScaffold(vm: LauncherViewModel) {
                 Column(Modifier.fillMaxSize()) {
                     Column(Modifier.fillMaxWidth().height(topH).padding(horizontal = 16.dp)) {
                         TopBar(vm, section, expanded, promptFocus, Modifier.onGloballyPositioned { promptBottom = (it.positionInWindow().y + it.size.height).toInt() })
-                    FocusBanner(vm)
+                        FocusBanner(vm)
                         Row(Modifier.weight(1f).padding(bottom = 8.dp)) {
                             if (expanded) NavRail(vm, section)
                             SectionContent(vm, section, Modifier.weight(1f).fillMaxHeight())
@@ -624,6 +624,7 @@ private fun ShellOverlay(vm: LauncherViewModel, modifier: Modifier) {
                         SuggestionKind.ALIAS -> "als"
                         SuggestionKind.PAIR -> "par"
                         SuggestionKind.SHORTCUT -> "sc"
+                        SuggestionKind.SETTING -> "set"
                     }
                     T(tag, color = t.dim, size = 12.sp, modifier = Modifier.width(40.dp))
                     if (s.app != null) {
