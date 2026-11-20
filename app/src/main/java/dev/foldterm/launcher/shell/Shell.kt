@@ -848,6 +848,13 @@ class Shell(private val vm: LauncherViewModel) {
                 }
             }
         },
+        Cmd("save", "save <url> [title]", "save a link to read later", setOf("later", "bookmark")) { args, rest ->
+            if (args.isEmpty()) { vm.go(Section.LINKS); vm.shellOpen.value = false; return@Cmd }
+            val raw = args[0]
+            val url = if (raw.startsWith("http")) raw else "https://$raw"
+            vm.prefs.addBookmark(url, rest.substringAfter(raw).trim().ifBlank { url.substringAfter("//").substringBefore('/') })
+            vm.out("saved for later — `cd links`", LineKind.OK)
+        },
         Cmd("brief", "brief", "rundown of your day", setOf("today", "morning")) { _, _ -> vm.brief() },
         Cmd("shade", "shade", "pull down notifications", setOf("notifications")) { _, _ -> vm.expandNotifications() },
         Cmd("g", "g <query>", "web search", setOf("web", "search", "ddg")) { _, rest -> vm.webSearch(rest) },

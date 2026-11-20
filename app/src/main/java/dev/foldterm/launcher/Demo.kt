@@ -139,6 +139,12 @@ fun LauncherViewModel.loadDemo() {
         ex(9, 64.3, "groceries", 8), ex(10, 9.99, "subscriptions music", 10), ex(11, 45.0, "gym pass", 12),
     )
     prefs.setBudget(1200.0)
+    prefs.saveBookmarks(listOf(
+        dev.foldterm.launcher.data.Bookmark(1, "https://example.com/hinge", "How the Fold's hinge got so thin", now - 2 * h, false),
+        dev.foldterm.launcher.data.Bookmark(2, "https://example.com/terminal", "In praise of the command line, 50 years on", now - 20 * h, false),
+        dev.foldterm.launcher.data.Bookmark(3, "https://example.com/pasta", "The only lasagne recipe you need", now - 3 * 24 * h, false),
+        dev.foldterm.launcher.data.Bookmark(4, "https://example.com/budget", "A no-spreadsheet budget that works", now - 5 * 24 * h, true),
+    ))
     prefs.setCountdowns(listOf("Japan trip|${java.time.LocalDate.now().plusDays(30)}", "Maya's birthday|${java.time.LocalDate.now().plusDays(12)}"))
     prefs.setUserName("Alex")
 }

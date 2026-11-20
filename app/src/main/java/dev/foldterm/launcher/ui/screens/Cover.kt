@@ -58,6 +58,7 @@ val COVER_CARDS = listOf(
     "actions" to "quick actions",
     "habits" to "habits",
     "countdowns" to "countdowns",
+    "links" to "read later",
 )
 
 /** Home for the folded phone: large type, big targets, one column, no nested scrolling. */
@@ -80,6 +81,7 @@ fun CoverHome(vm: LauncherViewModel) {
                 "actions" -> QuickActionsCard(vm)
                 "habits" -> HabitsCard(vm)
                 "countdowns" -> CountdownsCard(vm)
+                "links" -> LinksCard(vm)
             }
         }
         if (cards.isEmpty()) T("# no cover cards — choose some in Settings → cover screen", color = LocalTerm.current.dim)

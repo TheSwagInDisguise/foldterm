@@ -73,6 +73,7 @@ import java.util.Locale
 
 /** Highlights shown in the console after updating to a version. */
 private val WHATS_NEW = mapOf(
+    "0.54.0" to listOf("Share → FoldTerm: links go to the new Links pane, text becomes a note", "`save <url>` from the prompt; links card for Home and cover"),
     "0.53.0" to listOf("countdowns: `countdown add japan trip dec 20`, with a card for Home and the cover screen", "game boards fit the inner screen"),
     "0.52.0" to listOf("`define <word>` for dictionary definitions", "`wiki <topic>` for a Wikipedia summary (`wiki open` for the article)"),
     "0.51.0" to listOf("Money pane: log spending (`spent 12.50 lunch`), monthly budget, categories and a 14-day chart"),
@@ -257,6 +258,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh(force: Boolean = false) {
         controlsTick.value++
+        prefs.reloadShared()
         if (demo) { vitals.value = deviceRepo.vitals(); return }
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         if (prefs.morningBrief.value && hour in 4..11 && prefs.firstOpenToday()) {
@@ -661,6 +663,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val radio = dev.foldterm.launcher.data.Radio(app)
     val habits = MutableStateFlow(prefs.loadHabits())
     val expenses = MutableStateFlow(prefs.loadExpenses().sortedByDescending { it.time })
+
+    fun openBookmark(b: dev.foldterm.launcher.data.Bookmark) {
+        openUrl(b.url)
+        prefs.saveBookmarks(prefs.bookmarks.value.map { if (it.id == b.id) it.copy(read = true) else it })
+    }
 
     fun monthStart(): Long = java.util.Calendar.getInstance().apply {
         set(java.util.Calendar.DAY_OF_MONTH, 1); set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)

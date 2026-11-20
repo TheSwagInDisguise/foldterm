@@ -134,6 +134,22 @@
             </intent-filter>
         </service>
 
+        <!-- Share sheet target: links → read later, text → notes. -->
+        <activity
+            android:name=".ShareActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="FoldTerm"
+            android:noHistory="true"
+            android:taskAffinity="dev.foldterm.share"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <!-- Invisible trampoline that puts two apps into split screen (see SplitActivity.kt). -->
         <activity
             android:name=".SplitActivity"

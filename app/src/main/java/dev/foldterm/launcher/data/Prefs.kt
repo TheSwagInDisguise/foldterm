@@ -172,7 +172,7 @@ class Prefs(context: Context) {
         sp.edit().putString("notes", arr.toString()).apply()
     }
 
-    private fun loadNotes(): List<Note> = runCatching {
+    fun loadNotes(): List<Note> = runCatching {
         val arr = JSONArray(sp.getString("notes", "[]"))
         (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
@@ -437,6 +437,25 @@ class Prefs(context: Context) {
         runCatching { JSONArray(sp.getString("countdowns", "[]")).let { a -> (0 until a.length()).map { a.getString(it) } } }.getOrDefault(emptyList()),
     )
     fun setCountdowns(v: List<String>) { countdowns.value = v; sp.edit().putString("countdowns", JSONArray(v).toString()).apply() }
+
+    // ── read later ──
+    val bookmarks = MutableStateFlow(loadBookmarks())
+    fun loadBookmarks(): List<Bookmark> = runCatching {
+        val a = JSONArray(sp.getString("bookmarks", "[]"))
+        (0 until a.length()).map { i -> a.getJSONObject(i).let { o -> Bookmark(o.getLong("id"), o.getString("url"), o.optString("title"), o.getLong("added"), o.optBoolean("read")) } }
+    }.getOrDefault(emptyList())
+    fun saveBookmarks(v: List<Bookmark>) {
+        bookmarks.value = v
+        val a = JSONArray()
+        v.take(500).forEach { a.put(JSONObject().put("id", it.id).put("url", it.url).put("title", it.title).put("added", it.added).put("read", it.read)) }
+        sp.edit().putString("bookmarks", a.toString()).apply()
+    }
+    fun addBookmark(url: String, title: String) {
+        val now = System.currentTimeMillis()
+        saveBookmarks(listOf(Bookmark(now, url, title, now, false)) + loadBookmarks().filter { it.url != url })
+    }
+    /** Re-reads things other components (the share sheet) may have written. */
+    fun reloadShared() { notes.value = loadNotes(); bookmarks.value = loadBookmarks() }
 
     fun gameBest(key: String): Int = sp.getInt("best_$key", 0)
     fun setGameBest(key: String, v: Int) { sp.edit().putInt("best_$key", v).apply() }
