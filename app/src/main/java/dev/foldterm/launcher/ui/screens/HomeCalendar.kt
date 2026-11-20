@@ -438,6 +438,7 @@ fun CalendarScreen(vm: LauncherViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CalendarListPanel(vm: LauncherViewModel, modifier: Modifier) {
     val t = LocalTerm.current
