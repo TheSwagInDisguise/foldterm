@@ -101,6 +101,10 @@ class Prefs(context: Context) {
         hidden.value = next
         sp.edit().putStringSet("hidden", next).apply()
     }
+    /** Package of the chosen icon pack (used when iconStyle == "pack"). */
+    val iconPack = MutableStateFlow(sp.getString("iconPack", "") ?: "")
+    fun setIconPack(v: String) { iconPack.value = v; sp.edit().putString("iconPack", v).apply() }
+
     fun setIconStyle(v: String) { iconStyle.value = v; sp.edit().putString("iconStyle", v).apply() }
     fun setShowWallpaper(v: Boolean) { showWallpaper.value = v; sp.edit().putBoolean("wallpaper", v).apply() }
     fun setWallpaperDim(v: Float) { wallpaperDim.value = v; sp.edit().putFloat("wallpaperDim", v).apply() }

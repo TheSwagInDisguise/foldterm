@@ -61,6 +61,9 @@ import kotlin.math.abs
 
 val LocalFold = staticCompositionLocalOf { FoldState() }
 
+/** Current icon pack package, so icons reload when it changes. */
+val LocalIconPack = staticCompositionLocalOf { "" }
+
 /** Tint for mono icons; null means "use the theme accent". */
 val LocalIconTint = staticCompositionLocalOf<Color?> { null }
 
@@ -219,7 +222,7 @@ fun AppIcon(app: dev.foldterm.launcher.data.AppEntry, size: Dp, style: String, l
     val t = LocalTerm.current
     val tint = LocalIconTint.current ?: t.accent
     val filter = remember(style, tint) { if (style == "mono") monoFilter(tint) else null }
-    AsyncBitmap(app.uniqueKey, Modifier.size(size), filter, loader)
+    AsyncBitmap("${app.uniqueKey}|$style|${LocalIconPack.current}", Modifier.size(size), filter, loader)
 }
 
 @Composable

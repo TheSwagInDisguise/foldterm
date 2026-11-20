@@ -412,7 +412,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         prefs.setDock(cur)
     }
 
-    fun icon(app: AppEntry): Bitmap? = appsRepo.icon(app)
+    val iconPacks = dev.foldterm.launcher.data.IconPacks(app)
+
+    /** App icon honouring the icon pack setting; packs fall back to the app's own icon. */
+    fun icon(app: AppEntry): Bitmap? {
+        val pack = prefs.iconPack.value
+        if (prefs.iconStyle.value == "pack" && pack.isNotEmpty()) {
+            iconPacks.icon(pack, app.component)?.let { return it }
+        }
+        return appsRepo.icon(app)
+    }
 
     fun dial(number: String) = start(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(number)}")))
     fun sms(number: String) = start(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${Uri.encode(number)}")))

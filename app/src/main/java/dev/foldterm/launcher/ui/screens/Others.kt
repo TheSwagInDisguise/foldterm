@@ -27,6 +27,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -529,6 +532,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val wallpaper by vm.prefs.showWallpaper.collectAsStateWithLifecycle()
     val dim by vm.prefs.wallpaperDim.collectAsStateWithLifecycle()
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
+    val iconPack by vm.prefs.iconPack.collectAsStateWithLifecycle()
     var customTint by remember(iconTint) { mutableStateOf(if (iconTint.startsWith("#")) iconTint else "") }
     val hiddenKeys by vm.prefs.hidden.collectAsStateWithLifecycle()
     val sectionOrder by vm.prefs.sectionOrder.collectAsStateWithLifecycle()
@@ -567,7 +571,39 @@ fun SettingsScreen(vm: LauncherViewModel) {
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         T("icons", modifier = Modifier.width(110.dp))
-                        Tabs(listOf("color", "mono"), if (iconStyle == "mono") 1 else 0, { vm.prefs.setIconStyle(if (it == 1) "mono" else "color") })
+                        Tabs(
+                            listOf("color", "mono", "pack"),
+                            when (iconStyle) { "mono" -> 1; "pack" -> 2; else -> 0 },
+                            { vm.prefs.setIconStyle(listOf("color", "mono", "pack")[it]) },
+                        )
+                    }
+                    if (iconStyle == "pack") {
+                        Spacer(Modifier.height(8.dp))
+                        val packs by produceState(emptyList<Pair<dev.foldterm.launcher.data.IconPacks.Pack, Int>>(), allApps) {
+                            value = withContext(Dispatchers.IO) {
+                                vm.iconPacks.installed().map { it to vm.iconPacks.coverage(it.pkg, allApps) }
+                                    .also { vm.prefs.iconPack.value.takeIf { p -> p.isNotEmpty() }?.let { p -> vm.iconPacks.coverage(p, allApps) } }
+                            }
+                        }
+                        if (packs.isEmpty()) {
+                            T("No icon packs installed. Any standard pack from the Play Store works; Arcticons (free) suits the terminal look.", color = t.dim, size = 12.sp)
+                            Spacer(Modifier.height(6.dp))
+                            TButton("find icon packs") { vm.openUrl("https://play.google.com/store/search?q=icon%20pack&c=apps") }
+                        }
+                        packs.forEach { (pack, cov) ->
+                            val sel = pack.pkg == iconPack
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (sel) t.selection else Color.Transparent)
+                                    .clickable { vm.prefs.setIconPack(pack.pkg) }.padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                T(if (sel) "●" else "○", color = if (sel) t.accent else t.dim, modifier = Modifier.width(24.dp))
+                                T(pack.label, modifier = Modifier.weight(1f), maxLines = 1)
+                                T("$cov% of your apps", color = t.dim, size = 12.sp)
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        T("apps the pack doesn't cover keep their own icon", color = t.dim, size = 11.sp)
                     }
                     Spacer(Modifier.height(8.dp))
                     if (iconStyle == "mono") {
