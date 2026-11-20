@@ -546,6 +546,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
     val wallpaper by vm.prefs.showWallpaper.collectAsStateWithLifecycle()
     val dim by vm.prefs.wallpaperDim.collectAsStateWithLifecycle()
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
+    val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
     val iconPack by vm.prefs.iconPack.collectAsStateWithLifecycle()
     var customTint by remember(iconTint) { mutableStateOf(if (iconTint.startsWith("#")) iconTint else "") }
     val hiddenKeys by vm.prefs.hidden.collectAsStateWithLifecycle()
@@ -574,7 +575,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
                     T("theme", weight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Themes.all.forEach { th ->
+                        (Themes.all + Themes.custom(customSpec)).forEach { th ->
                             Row(
                                 Modifier.clip(RoundedCornerShape(50)).background(th.bg)
                                     .border(2.dp, if (th.name == theme) th.accent else th.border, RoundedCornerShape(50))
@@ -586,6 +587,47 @@ fun SettingsScreen(vm: LauncherViewModel) {
                                 T(th.name, color = th.fg, size = 13.sp)
                             }
                         }
+                    }
+                    if (theme == "custom") {
+                        Spacer(Modifier.height(10.dp))
+                        val parts = customSpec.split('|')
+                        fun setPart(i: Int, v: String) {
+                            val p = (parts + List(4) { "" }).take(4).toMutableList()
+                            p[i] = v
+                            vm.prefs.setCustomTheme(p.joinToString("|"))
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            T("base", modifier = Modifier.width(110.dp))
+                            Tabs(listOf("dark", "light"), if (parts.getOrNull(0) == "light") 1 else 0, { i ->
+                                setPart(0, if (i == 1) "light" else "dark")
+                                setPart(2, if (i == 1) "#F4F1FA" else "#0A0D12")
+                            })
+                        }
+                        val accents = listOf("#7EE787", "#33FF66", "#FFB000", "#FF7EB6", "#79C0FF", "#00E5FF", "#D2A8FF", "#FF7B72", "#4B3FD9", "#1F5C46")
+                        val darkBgs = listOf("#0A0D12", "#000000", "#120A14", "#0B1320", "#101010", "#14100A", "#0E1A12")
+                        val lightBgs = listOf("#F4F1FA", "#FFFFFF", "#EDE6D6", "#E8F1FB", "#FBEFF4", "#EEF5EC")
+                        listOf(
+                            Triple(1, "accent", accents),
+                            Triple(3, "accent 2", accents),
+                            Triple(2, "background", if (parts.getOrNull(0) == "light") lightBgs else darkBgs),
+                        ).forEach { (idx, label, swatches) ->
+                            T(label, color = t.dim, size = 12.sp, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                swatches.forEach { hex ->
+                                    val c = parseHexColor(hex)!!
+                                    val sel = parts.getOrNull(idx).equals(hex, ignoreCase = true)
+                                    Box(
+                                        Modifier.size(30.dp).clip(CircleShape).background(c)
+                                            .border(if (sel) 3.dp else 1.dp, if (sel) t.fg else t.border, CircleShape)
+                                            .clickable { setPart(idx, hex) },
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        T("or type colours: base|#accent|#background|#accent2", color = t.dim, size = 11.sp)
+                        var specDraft by remember(customSpec) { mutableStateOf(customSpec) }
+                        Field(specDraft, { specDraft = it }, Themes.DEFAULT_CUSTOM, Modifier.fillMaxWidth(), onDone = { vm.prefs.setCustomTheme(specDraft.trim()) })
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {

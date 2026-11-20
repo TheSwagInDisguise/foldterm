@@ -121,6 +121,9 @@ class Prefs(context: Context) {
     val pairs = MutableStateFlow(loadPairs())
     val recent = MutableStateFlow(sp.getString("recent", "")!!.split('|').filter { it.isNotBlank() })
 
+    val customTheme = MutableStateFlow(sp.getString("customTheme", null) ?: dev.foldterm.launcher.ui.Themes.DEFAULT_CUSTOM)
+    fun setCustomTheme(v: String) { customTheme.value = v; sp.edit().putString("customTheme", v).apply() }
+
     fun setTheme(v: String) { theme.value = v; sp.edit().putString("theme", v).apply() }
     fun setDock(v: List<String>?) {
         dock.value = v

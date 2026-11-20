@@ -76,8 +76,47 @@ object Themes {
     )
 
     val all = listOf(phosphor, amber, pastel, paper)
-    val names = all.map { it.name }
+    val names = all.map { it.name } + "custom"
     fun byName(n: String) = all.firstOrNull { it.name == n } ?: phosphor
+
+    /** Spec format: "dark|#accent|#background|#accent2". */
+    const val DEFAULT_CUSTOM = "dark|#FF7EB6|#120A14|#7FD6FF"
+
+    private fun hex(s: String?, fallback: Color): Color {
+        val h = s?.trim()?.removePrefix("#") ?: return fallback
+        val v = h.toLongOrNull(16) ?: return fallback
+        return when (h.length) { 6 -> Color(0xFF000000 or v); 8 -> Color(v); else -> fallback }
+    }
+
+    private fun mix(a: Color, b: Color, t: Float) = Color(
+        red = a.red + (b.red - a.red) * t, green = a.green + (b.green - a.green) * t,
+        blue = a.blue + (b.blue - a.blue) * t, alpha = 1f,
+    )
+
+    /** Builds a full palette from a few user choices, deriving panels, borders and glows. */
+    fun custom(spec: String): TermColors {
+        val p = spec.split('|')
+        val dark = p.getOrNull(0) != "light"
+        val base = if (dark) phosphor else pastel
+        val accent = hex(p.getOrNull(1), base.accent)
+        val bg = hex(p.getOrNull(2), base.bg)
+        val accent2 = hex(p.getOrNull(3), base.accent2)
+        val ink = if (dark) Color.White else Color.Black
+        val fg = if (dark) Color(0xFFE6EDF3) else Color(0xFF12141A)
+        val lum = 0.299f * accent.red + 0.587f * accent.green + 0.114f * accent.blue
+        return base.copy(
+            name = "custom", dark = dark, bg = bg,
+            glowA = accent.copy(alpha = if (dark) 0.25f else 0.35f), glowB = accent2.copy(alpha = if (dark) 0.2f else 0.3f),
+            glowC = mix(accent, accent2, 0.5f).copy(alpha = if (dark) 0.18f else 0.25f),
+            panel = mix(bg, ink, if (dark) 0.06f else 0.6f).copy(alpha = 0.88f),
+            panelAlt = mix(bg, ink, if (dark) 0.1f else 0.75f).copy(alpha = 0.85f),
+            border = mix(bg, ink, if (dark) 0.18f else 0.2f),
+            fg = fg, dim = mix(fg, bg, 0.45f),
+            accent = accent, accent2 = accent2, accent3 = mix(accent, accent2, 0.5f), ok = accent,
+            button = accent, onButton = if (lum > 0.55f) Color(0xFF0A0D12) else Color.White,
+            chip = mix(bg, ink, if (dark) 0.1f else 0.08f), selection = accent.copy(alpha = 0.22f),
+        )
+    }
 }
 
 val LocalTerm = staticCompositionLocalOf { Themes.phosphor }

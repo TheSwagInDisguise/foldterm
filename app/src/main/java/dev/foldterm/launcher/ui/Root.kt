@@ -132,7 +132,8 @@ fun LauncherRoot(vm: LauncherViewModel) {
     val fold by vm.fold.collectAsStateWithLifecycle()
     val iconTint by vm.prefs.iconTint.collectAsStateWithLifecycle()
     val iconPack by vm.prefs.iconPack.collectAsStateWithLifecycle()
-    val colors = Themes.byName(themeName)
+    val customSpec by vm.prefs.customTheme.collectAsStateWithLifecycle()
+    val colors = remember(themeName, customSpec) { if (themeName == "custom") Themes.custom(customSpec) else Themes.byName(themeName) }
     TermTheme(colors) {
         CompositionLocalProvider(LocalFold provides fold, LocalIconTint provides parseHexColor(iconTint), LocalIconPack provides iconPack) {
             LauncherScaffold(vm)
