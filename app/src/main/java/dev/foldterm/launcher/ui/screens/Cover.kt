@@ -151,7 +151,7 @@ internal fun DialCard(vm: LauncherViewModel) {
                             .padding(vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Avatar(c.name, 52.dp, if (c.id in ice) t.err else nameColor(c.name))
+                        Avatar(c.name, 52.dp, if (c.id in ice) t.err else nameColor(c.name), photo = c.photo)
                         Spacer(Modifier.height(4.dp))
                         T(c.name.substringBefore(' '), size = 12.sp, maxLines = 1)
                     }

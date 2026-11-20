@@ -224,6 +224,56 @@ class Prefs(context: Context) {
         o.keys().asSequence().associateWith { o.getInt(it) }
     }.getOrDefault(emptyMap())
 
+    /** Every setting as JSON, for backups. */
+    fun exportJson(): String {
+        val o = JSONObject()
+        sp.all.forEach { (k, v) ->
+            val e = JSONObject()
+            when (v) {
+                is String -> e.put("t", "s").put("v", v)
+                is Int -> e.put("t", "i").put("v", v)
+                is Long -> e.put("t", "l").put("v", v)
+                is Float -> e.put("t", "f").put("v", v.toDouble())
+                is Boolean -> e.put("t", "b").put("v", v)
+                is Set<*> -> e.put("t", "set").put("v", JSONArray(v.map { it.toString() }))
+                else -> return@forEach
+            }
+            o.put(k, e)
+        }
+        return JSONObject().put("app", "foldterm").put("version", 1).put("prefs", o).toString(2)
+    }
+
+    /** Replaces every setting with a backup made by [exportJson]. Returns how many were restored. */
+    fun importJson(json: String): Int {
+        val root = JSONObject(json)
+        require(root.optString("app") == "foldterm") { "not a FoldTerm backup" }
+        val o = root.getJSONObject("prefs")
+        val ed = sp.edit().clear()
+        var n = 0
+        o.keys().forEach { k ->
+            val e = o.getJSONObject(k)
+            when (e.getString("t")) {
+                "s" -> ed.putString(k, e.getString("v"))
+                "i" -> ed.putInt(k, e.getInt("v"))
+                "l" -> ed.putLong(k, e.getLong("v"))
+                "f" -> ed.putFloat(k, e.getDouble("v").toFloat())
+                "b" -> ed.putBoolean(k, e.getBoolean("v"))
+                "set" -> { val a = e.getJSONArray("v"); ed.putStringSet(k, (0 until a.length()).map { a.getString(it) }.toSet()) }
+                else -> return@forEach
+            }
+            n++
+        }
+        ed.commit()
+        return n
+    }
+
+    /** The version that last ran, so we can show what's new after an update. */
+    fun swapLastVersion(current: String): String? {
+        val last = sp.getString("lastVersion", null)
+        if (last != current) sp.edit().putString("lastVersion", current).apply()
+        return last
+    }
+
     /** True exactly once, on the very first launch. */
     fun consumeFirstRun(): Boolean {
         if (sp.getBoolean("seenFirstRun", false)) return false

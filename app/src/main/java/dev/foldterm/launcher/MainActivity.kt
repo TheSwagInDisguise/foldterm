@@ -27,6 +27,12 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { vm.onPermissionsResult() }
 
+    private val exportLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let { vm.exportSettings(it) } }
+
+    private val importLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.importSettings(it) } }
+
     private val roleLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { vm.refreshPermissions() }
 
@@ -63,6 +69,8 @@ class MainActivity : ComponentActivity() {
                             vm.onWidgetBound(req.id, false)
                         }
                     }
+                    UiRequest.ExportSettings -> exportLauncher.launch("foldterm-settings.json")
+                    UiRequest.ImportSettings -> importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
                     is UiRequest.ConfigureWidget -> {
                         pendingWidget = req.id
                         try {

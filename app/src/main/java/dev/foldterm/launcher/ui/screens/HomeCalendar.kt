@@ -298,6 +298,7 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
     val tasks by vm.tasks.collectAsStateWithLifecycle()
     val vitals by vm.vitals.collectAsStateWithLifecycle()
     val usage by vm.usage.collectAsStateWithLifecycle()
+    val contacts by vm.contacts.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
 
     Panel(
@@ -347,6 +348,15 @@ private fun SummaryPanel(vm: LauncherViewModel, modifier: Modifier) {
             val open = tasks.filter { !it.done }
             SummaryRow("✓", "Tasks", t.ok, onClick = { vm.go(Section.CALENDAR) }) {
                 if (open.isEmpty()) "Nothing on the list." else "${open.size} to do. Next: ${open.first().text}."
+            }
+            val bdays = remember(contacts) { vm.upcomingBirthdays(14) }
+            if (bdays.isNotEmpty()) {
+                Divider()
+                SummaryRow("✦", "Birthdays", t.accent3, onClick = { vm.go(Section.PEOPLE); vm.selectContact(bdays.first().first) }) {
+                    bdays.take(3).joinToString(", ") { (c, d) ->
+                        "${c.name} ${when (d) { 0 -> "today 🎂"; 1 -> "tomorrow"; else -> "in $d days" }}"
+                    } + if (bdays.size > 3) " and ${bdays.size - 3} more." else "."
+                }
             }
             usage?.let { u ->
                 Divider()

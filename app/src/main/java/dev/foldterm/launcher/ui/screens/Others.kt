@@ -290,7 +290,7 @@ private fun ContactRow(vm: LauncherViewModel, c: ContactSummary, selected: Boole
             .clickable { vm.selectContact(c) }.padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(c.name, 40.dp, nameColor(c.name))
+        Avatar(c.name, 40.dp, nameColor(c.name), photo = c.photo)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             T(c.name, weight = FontWeight.SemiBold, size = 15.sp, maxLines = 1)
@@ -327,7 +327,7 @@ private fun ContactDetailPanel(vm: LauncherViewModel, modifier: Modifier, ice: S
         val s = detail.summary
         Column(Modifier.verticalScroll(rememberScrollState())) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Avatar(s.name, 96.dp, nameColor(s.name))
+                Avatar(s.name, 96.dp, nameColor(s.name), photo = s.photo)
                 Spacer(Modifier.width(20.dp))
                 Column {
                     T(s.name, size = 28.sp, weight = FontWeight.Bold, maxLines = 2)
@@ -874,6 +874,14 @@ fun SettingsScreen(vm: LauncherViewModel) {
                             vm.out("~/.foldtermrc saved", dev.foldterm.launcher.shell.LineKind.OK)
                         }
                         TButton("defaults") { feeds = dev.foldterm.launcher.data.Prefs.DEFAULT_FEEDS }
+                    }
+                    Divider()
+                    T("backup", weight = FontWeight.Bold)
+                    T("save every setting (themes, layouts, notes, tasks, pairs, aliases…) to a file, or restore one", color = t.dim, size = 12.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TButton("back up…", primary = true) { vm.uiRequests.tryEmit(dev.foldterm.launcher.UiRequest.ExportSettings) }
+                        TButton("restore…") { vm.uiRequests.tryEmit(dev.foldterm.launcher.UiRequest.ImportSettings) }
                     }
                 }
             }

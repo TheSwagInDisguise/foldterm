@@ -71,9 +71,21 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/** Highlights shown in the console after updating to a version. */
+private val WHATS_NEW = mapOf(
+    "0.18.0" to listOf(
+        "back up and restore every setting (Settings → backup)",
+        "contact photos in People, quick dial and cover cards",
+        "upcoming birthdays in the Home summary",
+        "this note: a short what's-new after each update",
+    ),
+)
+
 sealed interface UiRequest {
     data class Permissions(val perms: Array<String>) : UiRequest
     data object RoleHome : UiRequest
+    data object ExportSettings : UiRequest
+    data object ImportSettings : UiRequest
     /** Ask the user to allow binding a widget (system dialog). */
     data class BindWidget(val id: Int, val info: AppWidgetProviderInfo) : UiRequest
     /** Run the widget's own configuration screen. */
@@ -151,6 +163,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         out("foldterm ${BuildConfig.VERSION_NAME} — type `help`", LineKind.DIM)
+        val last = prefs.swapLastVersion(BuildConfig.VERSION_NAME)
+        if (last != null && last != BuildConfig.VERSION_NAME) {
+            out("updated $last → ${BuildConfig.VERSION_NAME}", LineKind.ACCENT)
+            (WHATS_NEW[BuildConfig.VERSION_NAME.substringBefore('-')] ?: listOf("see the GitHub release notes for this version"))
+                .forEach { out("  • $it") }
+            shellOpen.value = true
+        }
         dev.foldterm.launcher.data.CrashLog.read(app)?.let { trace ->
             val cause = trace.lines().drop(4).firstOrNull { it.isNotBlank() }?.trim() ?: "unknown"
             out("last session crashed: $cause", LineKind.ERR)
@@ -770,6 +789,43 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             "torch" -> setTorch(null)
             "home" -> go(Section.HOME)
         }
+    }
+
+    // ───────────────────────── backup ─────────────────────────
+
+    fun exportSettings(uri: Uri) {
+        runCatching {
+            ctx.contentResolver.openOutputStream(uri)?.use { it.write(prefs.exportJson().toByteArray()) } ?: error("can't write there")
+        }.onSuccess { out("settings backed up ✓", LineKind.OK) }.onFailure { out("backup failed: ${it.message}", LineKind.ERR) }
+    }
+
+    fun importSettings(uri: Uri) {
+        runCatching {
+            val json = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } ?: error("can't read that file")
+            prefs.importJson(json)
+        }.onSuccess { n ->
+            out("restored $n settings — restarting", LineKind.OK)
+            viewModelScope.launch {
+                delay(600)
+                ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+                    ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)?.let { ctx.startActivity(it) }
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+        }.onFailure { out("restore failed: ${it.message}", LineKind.ERR) }
+    }
+
+    /** Contacts whose birthday falls within [days] days, soonest first, with days-until. */
+    fun upcomingBirthdays(days: Int = 14): List<Pair<ContactSummary, Int>> {
+        val today = java.time.LocalDate.now()
+        return contacts.value.mapNotNull { c ->
+            val md = c.birthday ?: return@mapNotNull null
+            val month = md.substringBefore('-').toIntOrNull() ?: return@mapNotNull null
+            val day = md.substringAfter('-').toIntOrNull() ?: return@mapNotNull null
+            val next = runCatching { java.time.LocalDate.of(today.year, month, day) }.getOrNull() ?: return@mapNotNull null
+            val occ = if (next.isBefore(today)) next.plusYears(1) else next
+            val d = java.time.temporal.ChronoUnit.DAYS.between(today, occ).toInt()
+            if (d <= days) c to d else null
+        }.sortedBy { it.second }
     }
 
     fun clearAllNotifications() {

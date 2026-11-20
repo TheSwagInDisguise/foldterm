@@ -49,6 +49,10 @@ data class ContactSummary(
     val company: String?,
     val phone: String?,
     val email: String?,
+    /** content:// thumbnail, when the contact has a photo. */
+    val photo: String? = null,
+    /** Birthday as "MM-dd", when known. */
+    val birthday: String? = null,
 )
 
 data class ContactDetail(

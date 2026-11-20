@@ -175,11 +175,23 @@ fun Tabs(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier
 }
 
 @Composable
-fun Avatar(name: String, size: Dp = 40.dp, color: Color = LocalTerm.current.accent3) {
+fun Avatar(name: String, size: Dp = 40.dp, color: Color = LocalTerm.current.accent3, photo: String? = null) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val bmp by produceState<Bitmap?>(null, photo) {
+        value = if (photo == null) null else withContext(Dispatchers.IO) {
+            runCatching {
+                ctx.contentResolver.openInputStream(android.net.Uri.parse(photo))?.use { android.graphics.BitmapFactory.decodeStream(it) }
+            }.getOrNull()
+        }
+    }
     Box(
         Modifier.size(size).clip(CircleShape).background(color.copy(alpha = 0.18f)),
         contentAlignment = Alignment.Center,
-    ) { T(Fmt.initials(name), color = color, size = (size.value * 0.36f).sp, weight = FontWeight.Bold) }
+    ) {
+        val b = bmp
+        if (b != null) Image(b.asImageBitmap(), null, Modifier.size(size), contentScale = ContentScale.Crop)
+        else T(Fmt.initials(name), color = color, size = (size.value * 0.36f).sp, weight = FontWeight.Bold)
+    }
 }
 
 /** Deterministic accent per name, like the coloured initials in the mock-ups. */

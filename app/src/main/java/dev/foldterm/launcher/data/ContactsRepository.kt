@@ -26,6 +26,18 @@ class ContactsRepository(private val ctx: Context) {
         val companies = HashMap<Long, String>()
         val phones = HashMap<Long, String>()
         val emails = HashMap<Long, String>()
+        val birthdays = HashMap<Long, String>()
+        runCatching {
+            cr.query(
+                Data.CONTENT_URI, arrayOf(Data.CONTACT_ID, Event.START_DATE),
+                "${Data.MIMETYPE}=? AND ${Event.TYPE}=?", arrayOf(Event.CONTENT_ITEM_TYPE, Event.TYPE_BIRTHDAY.toString()), null,
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val m = Regex("(\\d{4}|-)-(\\d{2})-(\\d{2})").find(c.getString(1) ?: "") ?: continue
+                    birthdays.putIfAbsent(c.getLong(0), "${m.groupValues[2]}-${m.groupValues[3]}")
+                }
+            }
+        }
         runCatching {
             cr.query(
                 Data.CONTENT_URI, arrayOf(Data.CONTACT_ID, Organization.COMPANY),
@@ -44,7 +56,7 @@ class ContactsRepository(private val ctx: Context) {
         runCatching {
             cr.query(
                 Contacts.CONTENT_URI,
-                arrayOf(Contacts._ID, Contacts.LOOKUP_KEY, Contacts.DISPLAY_NAME_PRIMARY, Contacts.STARRED),
+                arrayOf(Contacts._ID, Contacts.LOOKUP_KEY, Contacts.DISPLAY_NAME_PRIMARY, Contacts.STARRED, Contacts.PHOTO_THUMBNAIL_URI),
                 "${Contacts.DISPLAY_NAME_PRIMARY} IS NOT NULL", null,
                 "${Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC",
             )?.use { c ->
@@ -57,6 +69,8 @@ class ContactsRepository(private val ctx: Context) {
                         starred = c.getInt(3) == 1,
                         company = companies[id],
                         phone = phones[id],
+                        photo = c.getString(4),
+                        birthday = birthdays[id],
                         email = emails[id],
                     )
                 }
